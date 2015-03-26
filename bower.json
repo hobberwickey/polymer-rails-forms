@@ -1,4 +1,27 @@
 {
-	"name": "polymer-rails-forms",
-	"version": "0.1.0"
+  "name": "polymer-rails-forms",
+  "version": "0.1.0",
+  "homepage": "https://github.com/hobberwickey/polymer-rails-forms",
+  "authors": [
+    "hobberwickey <hobberwickey@gmail.com>"
+  ],
+  "description": "A powerful web component for quickly building Active Record compatible forms",
+  "main": "polymer-rails-forms/rails-form.html",
+  "keywords": [
+    "web-components",
+    "Polymer",
+    "Rails",
+    "ActiveRecord"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "~0.5.5"
+  }
 }
