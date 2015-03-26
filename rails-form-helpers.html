@@ -1,0 +1,847 @@
+<script>
+  /* TODO clean this up */
+  var FormHelpers = {
+    /* Utility things */
+    capitalize: function(str){
+    	if (str && str.length > 1){
+    		return str.split(" ").map( function(s){ return s[0].toUpperCase() + s.substr(1) } ).join(" ");
+    	} else {
+    		return "";
+    	}
+    },
+
+    findParent: function(el, selector){
+      var parent = el.parentNode;
+
+      if (parent !== null){
+        if (parent.querySelector(selector) !== null){
+          return el;
+        } else {
+          return this.findParent(parent, selector)
+        }
+      } else {
+        return null;
+      }
+    },
+
+    addClass: function(el, cls){
+      var reg = new RegExp("\\s/+" + cls, "g")
+      this.removeClass(el, cls);
+      el.className = el.className + " " + cls;
+    },
+
+    removeClass: function(el, cls){
+      var reg = new RegExp("\\s+" + cls, "g")
+      el.className = el.className.replace(reg, "");
+    },
+
+    hasClass: function(el, cls){
+      var reg = new RegExp("\\s+" + cls, "g")
+      return reg.test(el.className) || el.className === cls;
+    },
+
+    toggleClass: function(el, cls){
+      if (this.hasClass(el, cls)){
+        this.removeClass(el, cls);
+      } else {
+        this.addClass(el, cls);
+      }
+    },
+
+    /* Scope things */
+    wrapperClass: function(structure){
+      if (structure.type === "nest"){
+        if (structure.allowAdd) {
+          return 'wrapper list-wrapper'
+        } else {
+          return 'wrapper'
+        }
+      } else {
+        return 'input-wrapper'
+      }
+    },
+
+    addIndex: function(scope, index){
+      return scope + "[" + index + "]";
+    },
+
+    updateFieldScope: function(structure, key, scope){
+      if (scope === null) return null;
+      return structure.options.unscoped ? key : scope + "[" + key + "]"
+    },
+
+    updateScope: function(structure, key, scope){
+      if (scope === null) return null;
+
+      scope = structure.unscoped ? key : scope + "[" + key + "_attributes]";      
+      return scope;
+    },
+
+    scopeFieldData: function(data, structure, key){
+      //data = this.structure[this.key].unscoped ? this.unscopedData : data;
+      if (structure.type !== 'html'){
+        if (data[key] === void(0)) data[key] = structure.value || null;
+        return data;
+      }
+    },
+
+    scopeNestData: function(structure, key, data){
+      data = structure.unscoped ? this.unscopedData : data;
+      //console.log("nest", key, data[key]);
+      if (structure.multiple){
+    		if (data[key] === void(0)){
+          if (structure.allowAdd) {
+            data[key] = [];
+            if (!!structure.minItems){
+              for (var i=0; i<structure.minItems; i++) data[key].push({});
+            }
+          } else {
+            data[key] = [{}];
+          }
+        }
+
+      } else {
+    		if (data[key] === void(0)) data[key] = {};
+    	}
+
+    	return data[key];
+    },
+
+    scopeDataToIndex: function(data, obj){
+      var index = this.getIndex(obj);
+
+      this.data = this.data[index];
+    	return this.data
+    },
+
+    listItemClassName: function(index){
+      return  this.key + "-" + index;
+    },
+
+    /* Effects */
+    freezeElement: function(el){
+      var left = el.offsetLeft,
+          top = el.offsetTop;
+
+      el.style.position = 'absolute';
+      el.style.left = left;
+      el.style.top = top;
+    },
+
+    freezeFormCoords: { width: null, height: null, oWidth: null, oHeight: null },
+    freezeCoords: [],
+    freezeForm: function(selectors){
+      selectors = selectors || ".input-wrapper, .wrapper, .list-item, .sumbit-button-wrapper, #submit-button";
+
+      var form = this.shadowRoot.querySelector("form"),
+          elements = this.shadowRoot.querySelectorAll(selectors);
+      
+      this.freezeFormCoords = {
+        width: parseInt(form.offsetWidth, 10), 
+        height: parseInt(form.offsetHeight, 10),
+        oWidth: form.style.width,
+        oHeight: form.style.height
+      },
+          
+      this.addClass(form, 'frozen');
+      form.style.width = this.freezeFormCoords.width + "px";
+      form.style.height = this.freezeFormCoords.height + "px";
+
+      this.freezeCoords = [];
+      for (var i=0; i<elements.length; i++){
+        this.freezeCoords[i] = {};
+        this.freezeCoords[i].element = elements[i];
+        this.freezeCoords[i].top = parseInt(elements[i].offsetTop, 10);
+        this.freezeCoords[i].left = parseInt(elements[i].offsetLeft, 10);
+        this.freezeCoords[i].oTop = elements[i].style.top;
+        this.freezeCoords[i].oLeft = elements[i].style.left;
+        this.freezeCoords[i].oPos = elements[i].style.position;
+      }
+
+      for (var i=0; i<this.freezeCoords.length; i++){
+        this.freezeCoords[i].element.style.top = this.freezeCoords[i].top + "px";
+        this.freezeCoords[i].element.style.left = this.freezeCoords[i].left + "px";
+        this.freezeCoords[i].element.style.position = 'absolute';
+      }
+    },
+
+    unfreezeForm: function(){
+      var form = this.shadowRoot.querySelector("form");
+      
+      for (var i=0; i<this.freezeCoords.length; i++){
+        this.freezeCoords[i].element.style.top = this.freezeCoords[i].oTop;
+        this.freezeCoords[i].element.style.left = this.freezeCoords[i].oLeft;
+        this.freezeCoords[i].element.style.position = this.freezeCoords[i].oPos;
+      }
+
+      form.style.width = this.freezeFormCoords.oWidth;
+      form.style.height = this.freezeFormCoords.oHeight;
+      this.removeClass(form, 'frozen');
+    },
+
+    /* Creating Element */
+    createAddButton: function(wrap, structure, data, key, scope){
+      var add_button = this.createWithAttributes("paper-button", {"class": "add-button " + this.scopeToClass(structure, key, scope)}),
+          add_icon = this.createWithAttributes("core-icon", {icon: "add-circle-outline"}),
+          add_button_text = this.createWithAttributes("div", {text: structure.label || key.replace(/_/g)});
+
+      add_button.appendChild(add_icon);
+      add_button.appendChild(add_button_text);
+
+      wrap.insertBefore(add_button, wrap.childNodes[0]);
+      this.addClass(wrap, 'addable');
+
+      add_button.addEventListener('click', function(){
+        var items = wrap.querySelectorAll('.list-group'),
+            blank = false;
+
+        for (var i=0; i<items.length; i++){
+          if (this.checkForBlank(items[i])){
+            blank = true;
+            break;
+          }
+        }
+        
+        if (!blank) data.unshift({});
+        console.log(data);
+      }.bind(this), false); 
+    },
+
+    createRemoveButton: function(wrap, data, index, min){
+      var remove_button = this.createWithAttributes("core-icon", {icon: 'clear', "class": "remove-button"}); 
+      remove_button.addEventListener("click", function(e){
+        if (!min || data.length > min){
+          e.stopPropagation();
+          data.splice(index, 1);
+        }
+      }.bind(this), false)
+
+      wrap.appendChild(remove_button);
+    },
+
+    // createListItem: function(obj, structure, data){
+    //   var className = this.listItemClassName(data.indexOf(obj)),
+    //       container = this.createWithAttributes("div", {'class': "list-item-display"});
+
+    //   if (structure.display_fields){
+    //     for (var i=0; i<structure.display_fields.length; i++){
+    //       var field = structure.display_fields[i],
+    //           baseField = field.split(".")[0],
+    //           nameField = field.split(".")[field.split(".").length - 1]
+          
+    //       var el = document.createElement("div"),
+    //           label = this.createWithAttributes("span", { text: this.capitalize(nameField.replace(/_/g, " ")) + ": " });
+          
+    //       var value = document.createElement("span"),
+    //           val = document.createTextNode(""),
+    //           row = structure.structure.filter(function(item){ return item.key === baseField })[0];
+              
+    //           if (row.type === "json"){
+    //             var struct = field.split("."),
+    //                 o = obj;
+
+    //             for (var j=0; j<struct.length - 1; j++){
+    //               //TODO: this doesn't account for Arrays... which I'm fine with for now. 
+    //               if (!obj[struct[j]]) obj[struct[j]] = {};
+    //               o = o[struct[j]]
+    //             }
+
+    //             var f = struct[struct.length - 1]
+    //             if (!o[f]) o[f] = "";
+    //             val.bind("textContent", new PathObserver(obj, field))
+    //           } else {
+    //             if (!obj[baseField]) obj[baseField] = "";
+    //             val.bind("textContent", new PathObserver(obj, field));  
+    //           }
+          
+    //       el.appendChild(label);
+    //       el.appendChild(value);
+    //       value.appendChild(val);
+
+    //       container.appendChild(el);
+    //     }
+    //   } else {
+    //     container.appendChild(this.createWithAttributes("div", {text: "item " + (data.indexOf(obj) + 1) }))
+    //   }
+      
+    //   var remove_button = this.createWithAttributes("core-icon", {icon: 'clear'}); 
+    //   remove_button.addEventListener("click", function(e){
+    //     e.stopPropagation();
+    //     data.splice(data.indexOf(obj), 1);
+    //   }.bind(this), false)
+
+    //   container.appendChild(remove_button);
+
+    //   var self = this;
+      
+    //   container.addEventListener("click", function(e){
+    //     var stop = function(e){ e.stopPropagation(); }
+    //         group = self.findParent(container, ".list-group"),
+    //         first_input = group.querySelector(".input gc-input-decorator");
+        
+    //     stop(e);
+    //     var alreadyFocued = self.shadowRoot.querySelectorAll(".list-group.focused");
+    //     for (var i=0; i<alreadyFocued.length; i++){
+    //       self.removeClass(alreadyFocued[i], 'focused')
+    //     }
+
+    //     first_input.focused = true;
+    //     self.async(function(){
+    //       first_input.querySelector("input").focus();  
+    //     });
+        
+    //     self.addClass(group, "focused");
+    //     group.addEventListener("click", stop, false);
+    //     window.addEventListener("click", function(e){
+    //       window.removeEventListener("click", arguments.callee)
+    //       group.removeEventListener("click", stop)
+    //       self.removeClass(group, "focused");  
+    //     }, false)
+    //   }, false)
+
+    //   return container;
+    // },
+
+    createInput: function(structure, data, key, scope){
+      data = data || this.data;
+
+    	var default_structure = {
+        type: "string",
+        label: "",
+        options: {
+          floatingLabel: true,
+          unscoped: false,
+          events: {}
+        },
+        attributes: {
+
+        }
+      }
+
+      function setOptions(obj, defaults){
+        for (var x in defaults){
+          if (typeof defaults[x] === 'object'){
+            if (obj[x] === void(0)) obj[x] = {};
+            setOptions(obj[x], defaults[x]);
+          } else {
+            if (obj[x] === void(0)){
+              obj[x] = defaults[x];
+            }
+          }
+        }
+      }
+
+      setOptions(structure, default_structure);
+      
+      return this.getElement(structure, data, key, scope);
+      //this.inputList.push(obj)
+    },
+
+    scopeToClass: function(structure, key, scope){
+      if (scope === null) return key;
+
+      if (structure.unscoped){
+        var className = key
+      } else {
+    	  var className = scope.replace(/\[/g, "_").replace(/\]/g, "") + "_" + key;
+    	}
+      return className;
+    },
+
+    checkForBlank: function(group){
+      var inputs = group.querySelectorAll("input[type=text], textarea, select"),
+          blank = true,
+          single = true;
+      
+      for (var i=0; i<inputs.length; i++){
+        if (inputs[i].value.replace(/\s/g, "").length !== 0){
+          blank = false;
+          break;
+        }
+      }
+
+      if (blank){
+        this.addClass(this.findParent(group, ".input"), 'is-blank');
+        return true;
+      } else {
+        this.removeClass(this.findParent(group, ".input"), 'is-blank');
+        return false;
+      }
+    },
+
+    getElement: function(structure, data, key, scope){
+      data = data || this.data;
+
+      var inputs = {
+        string: function(){
+          return this.createBasicInput("text", data, structure, key, scope);
+        }.bind(this),
+
+        email: function(){
+          return this.createBasicInput("text", data, structure, key, scope);
+        },
+
+        hidden: function(){
+          return this.createBasicInput("hidden", data, structure, key, scope);
+        }.bind(this),
+
+        json: function(){
+          return this.createJSONField(structure.fields, data, structure, key, scope);
+        }.bind(this),
+
+        password: function(){
+          return this.createBasicInput("password", data, structure, key, scope);
+        }.bind(this),
+
+        integer: function(){
+          return this.createBasicInput("text", data, structure, key, scope);
+        }.bind(this),
+
+        url: function(){
+          return this.createBasicInput("text", data, structure, key, scope);
+        }.bind(this),
+
+        textarea: function(){
+          return this.createBasicInput("textarea", data, structure, key, scope)
+        }.bind(this),
+
+        checkbox: function(){
+          var box = document.createElement("paper-checkbox"),
+              input = this.createWithAttributes('input', {type: "checkbox", name: this.updateFieldScope(structure, key, scope)});
+
+          box.label = this.capitalize(structure.label || key);
+          box.appendChild(input);
+
+          box.addEventListener("change", function(e){
+            data[key] = e.target.checked ? 1 : 0;
+            input.checked = e.target.checked;
+          }.bind(this), false)
+
+          return box;
+
+        }.bind(this),
+
+        date: function(){
+          var wrapper =  this.createWithAttributes("div", {"class": "date-wrapper"}),
+              decorator = this.createWithAttributes("gc-input-decorator", { label: this.capitalize(structure.label || key.replace(/_/g, " ")), floatingLabel: structure.options.floatingLabel}),
+              visibleInput = document.createElement("input"),
+              input = this.createWithAttributes("input", {type: "hidden", name: this.updateFieldScope(structure, key, scope) })
+
+          decorator.appendChild(visibleInput);
+          wrapper.appendChild(decorator);
+          wrapper.appendChild(input);
+
+          var picker = new Pikaday({ field: visibleInput, bound: false, onSelect: function(){
+            data[key] = picker._d.getFullYear() + "-" + (picker._d.getMonth() + 1) + "-" + picker._d.getDate();
+          }.bind(this) });
+
+          visibleInput.addEventListener("focus", function(){ picker.show(); });
+          new PathObserver(data, key).open(function(){ input.value = data[key]; });
+
+          return wrapper;
+        }.bind(this),
+
+        select: function(){
+          var values = structure.values;
+
+          var wrapper = this.createWithAttributes("div", {"class": "select-wrapper"}),
+              decorator = this.createWithAttributes("gc-input-decorator", { label: this.capitalize(structure.label || key), floatingLabel: structure.options.floatingLabel}),
+              secretInput = this.createWithAttributes('input', {type: 'hidden', name: this.updateFieldScope(structure, key, scope)}),
+              input = this.createWithAttributes("input", { type: "text", name: "", "class": "pseudo-select-input", disabled: true }),
+              select = this.createWithAttributes("core-selector", {valueattr: "val", "class": "pseudo-select", multi: (!!structure.multi) });
+          
+          //secretInput.bind('value', new PathObserver(data, key));
+          //select.bind('selected', new PathObserver(data, key));
+          new PathObserver(data, key).open(function(){
+            secretInput.value = !!structure.multi ? JSON.stringify(data[key]) : data[key];
+            select.selected = data[key];
+          })
+
+          if (!structure.blank){ 
+            data[key] = values.length > 0 ? values[0][0] : (!!structure.multi ? [] : "");
+            input.value = values.length > 0 ? values[0][1] : "";
+          }
+          var self = this;
+
+          if (!structure.opened){
+          
+            select.addEventListener("click", function(e){
+              if (!!structure.multi) e.stopPropagation();
+            }, false);
+
+            decorator.addEventListener('click', function(e){
+              if (self.hasClass(wrapper, 'opened')) return;
+
+              e.stopPropagation();
+              decorator.updateLabelVisibility("down");
+              
+              if (!structure.scrollTarget){
+                self.addClass(wrapper, 'opened');
+              } else {
+                var scrollTarget = document.querySelector(structure.scrollTarget);
+
+                if (scrollTarget === document.body){
+                  var coords = wrapper.getBoundingClientRect();
+                      coords.top = coords.top + window.pageYOffset + wrapper.offsetHeight;
+                      coords.left = coords.left + window.pageXOffset;
+                } else {
+                  var parentCoords =  scrollTarget.tagName.indexOf("-") !== -1 ? scrollTarget.scroller.getBoundingClientRect() : scrollTarget.getBoundingClientRect(),
+                      wrapperCoords = wrapper.getBoundingClientRect(),
+                      scrollTop = scrollTarget.tagName.indexOf("-") !== -1 ? scrollTarget.scroller.scrollTop : scrollTarget.scrollTop;
+                  
+                  var coords = {
+                    width: wrapperCoords.width,
+                    height: wrapperCoords.height,
+                    top: wrapperCoords.top - parentCoords.top + scrollTop + wrapperCoords.height,
+                    left: wrapperCoords.left - parentCoords.left + scrollTarget.scrollLeft
+                  }
+                }
+                    
+                select.style.width = coords.width + "px";
+                select.style.top = (coords.top ) + "px";
+                select.style.left = (coords.left) + "px";
+
+                scrollTarget.appendChild(select);
+              }
+
+              window.addEventListener('click', function(){
+                if (!structure.scrollTarget){
+                  self.removeClass(wrapper, 'opened');
+                } else {
+                  wrapper.appendChild(select);
+                }
+
+                window.removeEventListener('click', arguments.callee);
+              }, false);
+            }, false);
+          } else {
+            self.addClass(wrapper, 'opened');
+            decorator.updateLabelVisibility("down"); 
+          }
+
+          select.addEventListener('core-select', function(){
+            if (!structure.multi) self.removeClass(wrapper, 'opened');
+            decorator.updateLabelVisibility(select.selected ? select.selected : "");
+
+            self.async(function(){
+              if (!!structure.multi){
+                input.value = select === null ? "" : select.selectedItem.map(function(s){ return s.textContent }).join(', ');
+                data[key] = select.selectedItem.map(function(s){ return s.getAttribute('val') });
+              } else {
+                input.value = select === null ? "" : select.selectedItem.textContent;
+                data[key] = select.selectedItem.getAttribute('val');
+              }
+            });
+          }, false);
+          
+          var build_options = function(){
+            var keys = {};
+
+            while (select.firstChild) { select.removeChild(select.firstChild) };
+            if (!!structure.blank) select.appendChild(this.createWithAttributes("div", {val: "huh", text: (typeof structure.blank === "string" ? structure.blank : "") }))
+            for (var i=0; i<structure.values.length; i++){
+              var div = self.createWithAttributes("div", {val: structure.values[i][0], text: structure.values[i][1] });
+              
+              if (!!structure.multi){
+                var checkbox = this.createWithAttributes("paper-checkbox", {"class": "select-check"});
+                div.appendChild(checkbox);
+              }
+              select.appendChild(div);
+            }
+
+            var nil = structure.values.length === 0 ? self.addClass(wrapper, 'is-blank') : self.removeClass(wrapper, 'is-blank');
+                nil = structure.values.length === 1 ? self.addClass(wrapper, 'is-single') : self.removeClass(wrapper, 'is-single');
+          
+            //if (!structure.blank && values.length > 0) select.selected = values[0][0];
+          }.bind(this);
+
+          build_options();
+          new ArrayObserver(structure.values).open(function(){
+            build_options();
+          })
+
+          //Binding the checkboxes state to whether or not they're selected
+          if (!!structure.multi){
+            new ArrayObserver(select.selection).open(function(changed){
+              for (var j=0; j<changed.length; j++){
+                var changes = changed[j];
+                for (var i=0; i<changes.addedCount; i++){
+                  select.selectedItem[changes.index + i].querySelector("paper-checkbox").checked = true;
+                } 
+
+                for (var i=0; i<changes.removed.length; i++){
+                  changes.removed[i].querySelector("paper-checkbox").checked = false;
+                }
+              }
+            })
+          }
+
+          new PathObserver(structure, 'label').open(function(){
+            decorator.label = this.capitalize(structure.label || key) 
+          }.bind(this));
+
+          wrapper.appendChild(decorator);
+          decorator.appendChild(this.createWithAttributes("core-icon", {icon: "expand-more", "class": 'select-icon'}));
+          decorator.appendChild(input);
+          wrapper.appendChild(select);
+          wrapper.appendChild(secretInput);
+          return wrapper;
+        }.bind(this),
+
+        location: function(){
+          var wrapper = document.createElement("gc-input-decorator"),
+              input = document.createElement( "input" );
+          //google-location-input
+          if (!data[key]) data[key] = { value: null, lat: null, lng: null }
+
+          wrapper.label = this.capitalize(structure.label || key);
+          wrapper.floatingLabel = structure.options.floatingLabel;
+
+          input.type = "text";
+          input.name = this.updateFieldScope(structure, key, scope);
+          input.bind('value', new PathObserver(data[key], "value"))
+
+          this.addValidation('location', input, structure, key, data);
+
+          var autocomplete = new google.maps.places.Autocomplete(
+            input, { types: ['(cities)'] }
+          );
+
+          var self = this;
+          google.maps.event.addListener(autocomplete, 'place_changed', function () {
+            var place = autocomplete.getPlace();
+            
+            data[key].value = input.value;
+            data[key].lat = place.geometry.location.lat();
+            data[key].lng = place.geometry.location.lng();
+
+            if (!!structure.options.events.select){
+              structure.options.events.select(data[key])
+            }
+          })
+
+          wrapper.appendChild(input);
+          return wrapper;
+        }.bind(this),
+
+        image: function(){
+          var wrapper = this.createWithAttributes("span", { "class": "btn-image-upload" }),
+              input = this.createWithAttributes("input", { type: "file", name: this.updateFieldScope(structure, key, scope), required: structure.required || false }),
+              icon_wrapper = this.createWithAttributes("div", {"class": "image-icon-wrapper"}),
+              explanation = this.createWithAttributes("p", {text: "Click here to upload an image"}),
+              icon = this.createWithAttributes("core-icon", {icon: "image:photo"});
+      
+          icon_wrapper.appendChild(icon);
+          wrapper.appendChild(input);
+          wrapper.appendChild(icon_wrapper);
+          wrapper.appendChild(explanation);
+
+          this.addValidation('image', input, structure, key);
+          input.addEventListener("click", function(e){ e.stopPropagation(); }, true)
+          
+          var self = this;
+          input.addEventListener("change", function(){
+            if (this.files.length){
+              var oFReader = new FileReader();
+              oFReader.readAsDataURL(this.files[0]);
+
+              oFReader.onload = function (oFREvent) {
+                  wrapper.parentNode.style.backgroundImage = "url(" + oFREvent.target.result + ")";
+                  self.addClass(wrapper.parentNode, "has-image");
+              };
+
+              self.data[self.key] = this.files[0];
+            } else {
+              self.removeClass(wrapper.parentNode, 'has-image');
+              wrapper.parentNode.style.backgroundImage = "";
+
+              self.data[self.key] = null;
+            }
+          }, true)
+
+          return wrapper;
+        }.bind(this),
+
+        file: function(){
+          var wrapper = this.createWithAttributes("span", { "class": "btn-file-upload" }),
+              decorator = this.createWithAttributes("gc-input-decorator", { "class": "file-decorator", label: this.capitalize(structure.label || key.replace(/_/g, " ")), floatingLabel: structure.options.floatingLabel }),
+              textInput = this.createWithAttributes("input", { type: "text", "class": "file-dummy" }),
+              input = this.createWithAttributes("input", { type: "file", name: this.updateFieldScope(structure, key, scope), required: structure.required || false });
+          
+          decorator.appendChild(textInput);
+          wrapper.appendChild(input);
+          wrapper.appendChild(decorator);
+
+          this.addValidation('file', input, structure, key);
+          input.addEventListener("click", function(e){ e.stopPropagation(); }, true)
+          
+          var self = this;
+          input.addEventListener("change", function(){
+            if (this.files.length){
+              textInput.value = Array.apply(null, this.files).map(function(item){ return item.name }).join(",");
+              self.addClass(wrapper.parentNode, "has-file");  
+              self.data[self.key] = this.files; 
+              decorator.updateLabelVisibility(this.files[0].name);
+           
+            } else {
+              textInput.value = "";
+              self.removeClass(wrapper.parentNode, "has-file");
+              self.data[self.key] = null;
+              decorator.updateLabelVisibility("");
+            }
+          }, true)
+
+          return wrapper;
+        }.bind(this),
+
+        html: function(){
+          var content = document.createElement('div');
+          content.innerHTML = structure.content;
+          return content;
+        }.bind(this)
+
+      }
+
+      //try {
+        return inputs[structure.type]()
+    	//} catch(e){
+    	//	throw "Unknown field type: " + structure.type
+    	//}
+    },
+
+    createBasicInput: function(type, data, structure, key, scope){
+      var wrapper = document.createElement("gc-input-decorator"),
+      		input = document.createElement( type === "textarea" ? "textarea" : "input" );
+      
+      wrapper.label = this.capitalize(structure.label || key);
+      wrapper.floatingLabel = structure.options.floatingLabel;
+      
+      input.type = type;
+ 			input.name = this.updateFieldScope(structure, key, scope);
+      input.value = structure.value || '';
+      input.id = this.scopeToClass(structure, key, scope)
+ 			if (structure.required) input.required = true;
+      input.bind('value', new PathObserver(data, key)) 
+			
+      this.addValidation(type, input, structure, key);
+      
+      if (!!structure.autocomplete && typeof structure.autocomplete === "string"){
+        this.autocomplete(input, structure.autocomplete, structure.autocompleteOptions || {});
+      } 
+
+      if (type === 'textarea') input.rows = 3;
+      if (type !== "hidden"){	
+        wrapper.appendChild(input);      
+	      return wrapper;
+	    } else {
+	    	return input;
+	    }
+
+    },
+
+    createJSONField: function(fields, data, structure, key, scope){
+      var wrapper = this.createWithAttributes('div', { "class": "json-wrapper" }),
+          input = this.createWithAttributes("textarea", { name: this.updateFieldScope(structure, key, scope), "class": "hidden", text: JSON.stringify(data[key]) }),
+          isList = structure.allowAdd;
+      
+      if (structure.multiple){
+        this.jsonData[key] = [];
+        if (structure.allowAdd) this.createAddButton(wrapper, structure, this.jsonData[key], key, scope) 
+        
+        new ArrayObserver(this.jsonData[key]).open(function(){
+          var items = wrapper.querySelectorAll(".list-group")
+          for (var i=0; i<items.length; i++) wrapper.removeChild(items[i]);
+          
+          for (var i=0; i<this.jsonData[key].length; i++){
+            var wrap = this.createWithAttributes("div", {"class": "list-group"});
+      
+            this.buildStructure(structure.structure, this.jsonData[key][i], wrap, null);
+            if (structure.allowAdd) this.createRemoveButton(wrap, this.jsonData[key], i, structure.minItems)
+            wrapper.appendChild(wrap);
+          }
+        }.bind(this));
+
+        for (var i=0; i<structure.minItems || 0; i++) this.jsonData[key].push({});
+        
+      } else {
+        this.jsonData[key] = {}
+        this.buildStructure(structure.structure, this.jsonData[key], wrapper, null);
+      }
+      wrapper.appendChild(input)
+      
+      var args = arguments,
+          observer = new ObjectObserver(structure);
+
+      observer.open(function(){
+        var nFields = this.createJSONField.apply(this, args);
+        wrapper.parentNode.insertBefore(nFields, wrapper);
+        wrapper.parentNode.removeChild(wrapper);
+        observer.close();
+        // var button = wrapper.querySelector(".add-button");
+        // console.log(button);
+        // console.log(structure.allowAdd)
+        // if (!!structure.allowAdd){
+          
+        //   if (button === null){
+        //     this.createAddButton(wrapper, structure, this.jsonData[key], key, scope)
+        //   }
+        // } else {
+        //   if (button !== null){
+        //     button.parentNode.removeChild(button);
+        //   }
+        // } 
+      }.bind(this))
+
+      var self = this;
+
+      function recurse(obj){
+        if (Array.isArray(obj)){
+          new ArrayObserver(obj).open(function(changed){
+            for (var j=0; j<changed.length; j++){
+              var changes = changed[j];
+              for (var i=0; i<changes.addedCount; i++){
+                recurse(obj[changes.index + i]);
+              }
+            }
+
+            input.value = JSON.stringify(self.jsonData[key]);
+            data[key] = JSON.parse(input.value);
+          })
+
+          for (var i=0; i<obj.length; i++) recurse(obj[i]);
+        } else {
+          new ObjectObserver(obj).open(function(){ 
+            input.value = JSON.stringify(self.jsonData[key]);
+            data[key] = JSON.parse(input.value);
+          });
+
+          for (var x in obj){
+            if (typeof obj[x] === 'object' && obj[x] !== null) recurse(obj[x]);
+          }
+        }
+      }
+      recurse(this.jsonData[key]);
+
+      input.value = JSON.stringify(this.jsonData[key]);
+      data[key] = JSON.parse(input.value);
+
+      return wrapper;
+    },
+
+    createWithAttributes: function(type, attributes){
+      var el = document.createElement(type)
+      if (attributes){
+        for (var x in attributes){
+          if (x === 'text'){
+            var t = document.createTextNode(attributes[x]);
+            el.appendChild(t);
+          } else {
+            el.setAttribute(x, attributes[x]);
+          }
+        }
+      }
+
+      return el;
+    }
+  }
+</script>

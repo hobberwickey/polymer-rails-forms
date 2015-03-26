@@ -1,0 +1,104 @@
+<polymer-element name="form-spinner">
+  <template>
+		<style>
+			.spinner {
+				position: relative;
+				display: block;
+			}
+
+			.circle {
+				width: 25%;
+				height: 25%;
+				border-radius: 50%;
+				background-color: white;
+				position: absolute;
+				opacity: 0;
+
+				transition: opacity 300ms ease-out;
+			}
+
+			.fade.circle {
+				opacity: 1;
+			}
+
+			.circle_row_1 {
+				top: 0;
+			}
+
+			.circle_row_2 {
+				top: 50%;
+				margin-top: -12.5%;
+			}
+
+			.circle_row_3 {
+				bottom: 0;
+			}
+
+			.circle_column_1 {
+				left: 0;
+			}
+
+			.circle_column_2 {
+				left: 33.3%;
+				margin-left: -12.5%;
+			}
+
+			.circle_column_3 {
+				left: 66.6%;
+				margin-left: -12.5%;
+			}
+
+			.circle_column_4 {
+				right: 0;
+			}
+		</style>
+		<div class="spinner">
+			<div class="circle circle_row_1 circle_column_2 circle6"></div>
+			<div class="circle circle_row_1 circle_column_3 circle1"></div>
+			<div class="circle circle_row_2 circle_column_1 circle5"></div>
+			<div class="circle circle_row_2 circle_column_4 circle2"></div>
+			<div class="circle circle_row_3 circle_column_2 circle4"></div>
+			<div class="circle circle_row_3 circle_column_3 circle3"></div>
+		</div>
+	</template>
+
+	<script>
+    Polymer({
+      publish: {
+      	width: 2,
+      	height: 2,
+      	unit: 'em'
+      },
+
+      domReady: function(){
+      	this.super();
+      	var spinner = this.shadowRoot.querySelector(".spinner");
+      	spinner.style.width = this.width + this.unit;
+      	spinner.style.height = this.height + this.unit;
+      },
+
+      start: function(){
+      	var index = 1,
+      	 		alt = 4,
+      	 		spinner = this.shadowRoot.querySelector('.spinner');
+
+      	spinner.classList.add('active');
+      	var t = setInterval(function(){
+      		if (spinner.classList.contains("active") === -1){
+      			clearInterval(t);
+      			return;
+      		}
+      		spinner.querySelector(".circle" + index).classList.add("fade");
+      		spinner.querySelector(".circle" + alt).classList.remove("fade");
+      		
+      		index = index + 1 > 6 ? 1 : index + 1;
+      		alt = alt + 1 > 6 ? 1 : alt + 1;
+      	}.bind(this), 100);
+      },
+
+	    stop: function(){
+	    	this.shadowRoot.querySelector('.spinner').classList.remove('active');
+      }
+    });
+  </script>
+</polymer-element>

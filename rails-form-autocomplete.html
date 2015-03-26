@@ -1,0 +1,97 @@
+<script>
+	Autocomplete = {
+		autocomplete: function(input, url, options){
+			options = options || {};
+			
+			var self = this,
+				userInput = "";
+		
+			var opts = {
+				min: 3, //The minimum number of characters before autocomplete kicks in
+				dropdownMax: 5, //The number of matches to display
+				method: "GET", //The route method
+				displayField: 'name' //The name of the returned field to display
+			}
+
+			for (var x in options){
+				if (opts[x] !== void(0)) opts[x] = options[x];
+			}
+			
+			input.addEventListener('keyup', function(e){
+				var current = input.parentNode.parentNode.querySelector(".autocomplete-selector");
+				switch (e.keyCode){
+					case 38:
+						current.selectPrevious();
+						break;
+					case 40:
+						current.selectNext();
+						break;
+					case 13:
+						input.blur();
+						break;
+					case 8:
+						userInput = input.value;
+						removeCurrent();
+						break;
+					default:
+						userInput = input.value;
+
+						var val = input.value;
+						if (val.length >= opts.min){
+							var xhr = document.createElement("core-xhr");
+							xhr.request({
+								method: opts.method, 
+					            url: url, 
+					            params: { search: val },
+					            callback: function(resp){
+					            	var matches = JSON.parse(resp);
+					            	matchDisplay(input, matches);
+	            				}
+							})
+						};
+				}
+			}, false)
+
+			input.addEventListener("blur", function(){
+				removeCurrent();
+				userInput = "";
+			}, false);
+
+			var matchDisplay = function(input, matches, coords){
+				var list = document.createElement("core-selector");
+					list.className = "autocomplete-selector";
+					list.valueattr = 'label'
+					list.addEventListener("core-select", function(){ selectItem.apply(null, arguments)}, false);
+			
+				for (var i=0; i<matches.length; i++){
+					var item = document.createElement("div");
+						item.appendChild( document.createTextNode(matches[i][opts.displayField]));
+						item.className = "autocomplete-list-item";
+						item.label = matches[i][opts.displayField];
+
+					list.appendChild(item);
+					if (i === 0) list.selected = matches[i][opts.displayField];
+				}
+
+				removeCurrent();
+				input.parentNode.parentNode.appendChild(list);
+
+				list.addEventListener("click", function(){
+					self.async(function(){ input.blur(); });
+				}, false);
+			};
+
+			var selectItem = function(e){
+				var val = e.target.selected;
+				input.value = val;
+			    input.selectionStart = userInput.length;
+			    input.selectionEnd = val.length;
+			}
+
+			var removeCurrent = function(){
+				var current = input.parentNode.parentNode.querySelector(".autocomplete-selector");
+				if (current) input.parentNode.parentNode.removeChild(current);
+			}
+		}
+	}	
+</script>

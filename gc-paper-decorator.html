@@ -1,0 +1,18 @@
+<!-- 
+  Exactly the same as the normal paper-input-decorator except if fires a 
+  'focus-changed' event with the state of the label
+ -->
+
+<link rel='import' href='../paper-input/paper-input-decorator.html' >
+
+<polymer-element name="gc-input-decorator" extends="paper-input-decorator">
+  <shadow></shadow>
+  <script>
+    Polymer({
+      updateLabelVisibility: function(){
+        this.super(arguments);
+        this.fire("focus-changed", { state: this._autoLabelVisible })
+      }
+    });
+  </script>
+</polymer-element>

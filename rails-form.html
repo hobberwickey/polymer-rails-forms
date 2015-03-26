@@ -1,0 +1,724 @@
+<link rel="import" href="rails-form-helpers.html" >
+<link rel="import" href="rails-form-validators.html" >
+<link rel="import" href="rails-form-autocomplete.html" >
+<link rel="import" href="gc-paper-decorator.html" >
+<link rel="import" href="form-spinner.html" >
+<link rel="import" href="../paper-button/paper-button.html" >
+<link rel="import" href="../core-icons/image-icons.html" >
+<link rel="import" href="../core-ajax/core-xhr.html" >
+
+<script src='pikaday.js'></script>
+
+<style>
+  /*
+    these are attached to the body if scrollTarget is set, so they need to be outside of the shadowDOM
+  */
+  .pseudo-select {
+    opacity: 1;
+    display: block;
+    transition: opacity 250ms ease-out;
+    position: absolute;
+    top: 100%;
+    width: 106%;
+    background-color: white;
+    box-shadow: -2px 1px 10px #888;
+    z-index: 1;
+    margin-top: -10px;
+  }
+
+  .pseudo-select > div {
+    min-height: 2em;
+    border-bottom: solid 1px;
+    padding: 5px 3%;
+    position: relative;
+  } 
+
+  .pseudo-select > div:hover {
+    background-color: #D5DAFF;
+  }
+
+  .pseudo-select > div paper-checkbox {
+    float: left;
+    margin-right: 15px;
+  }
+</style>
+
+<polymer-element name="rails-form">
+  <template>
+    <link rel='stylesheet' href='pikaday.css'> 
+    <style>
+      #inputs-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        flex-direction: row;
+        position: relative;
+      }
+
+      .input, .nest, .list-group, .group, .step{
+        flex: 1;
+        min-width: 100%;
+        max-width: 0;
+        position: relative;
+        display: inline-block;
+        box-sizing: border-box;
+        margin-bottom: 0px;
+      }
+
+      .input {
+        padding: 0px 10px;
+      }
+
+      .input.json {
+        padding: 0px;
+      }
+
+      .input.json .json-wrapper > textarea {
+        display: none;
+      }
+
+      .nest {
+        display: flex;
+        flex-wrap: wrap;
+      }
+
+      .step:last-of-type {
+        margin-bottom: -60px; /* To suck the submit buttom up */
+      }
+
+      gc-input-decorator.invalid /deep/ .error {
+        display: none !important;
+      }
+
+      /* File upload CSS */
+      .btn-file-upload input[type=file] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        font-size: 999px;
+        text-align: right;
+        filter: alpha(opacity=0);
+        opacity: 0;
+        outline: none;
+        background: white;
+        cursor: pointer;
+        display: block;
+        z-index: 1;
+      }
+
+      .btn-file-upload {
+        position: relative;
+        overflow: hidden;
+        display: block;
+      
+      }
+
+      /* Image upload CSS */
+      .btn-image-upload input[type=file] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        font-size: 999px;
+        text-align: right;
+        filter: alpha(opacity=0);
+        opacity: 0;
+        outline: none;
+        background: white;
+        cursor: pointer;
+        display: block;
+        z-index: 1;
+      }
+
+      .btn-image-upload {
+        position: relative;
+        overflow: hidden;
+        display: block;
+        font-size: 1000%;
+        width: 1.5em;
+        height: 1em;
+        text-align: center;
+        margin: 0px auto;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+      }
+
+      .btn-image-upload core-icon {
+        height: 100%;
+        width: 100%;
+        margin: 0 auto;
+        display: block;
+        color: #666;
+        font-size: 10%;
+      }
+
+      .has-image .btn-image-upload core-icon {
+        display: none;
+      }
+
+      .has-image .btn-image-upload p {
+        display: none;
+      }
+
+      .btn-image-upload div {
+        height: 75%;
+        width: 100%;
+      }
+
+      .btn-image-upload p {
+        font-size: 10%;
+        margin-top: 0px;
+      }
+
+      /* Lists */
+
+      .list-group .list-item-display {
+        display: flex;
+        border-bottom: solid 1px;
+        margin-bottom: 5px;
+      }
+
+      .list-group .remove-button {
+        color: red;
+        cursor: pointer;
+        position: absolute;
+        top: 0px;
+        right: 5px;
+      }
+
+      .list-group .list-item-display > div {
+        cursor: pointer;
+        flex: 1;
+      }
+
+      .addable .add-button {
+        margin: 0;
+        box-sizing: border-box;
+      }
+
+      .addable .add-button /deep/ .button-content {
+        padding: 0;
+      }
+
+      .addable .add-button core-icon {
+        display: inline-block;
+        color: #5bc0de;
+      }
+
+      .addable .add-button div {
+        display: inline-block;  
+        color: #5bc0de;
+      }
+
+      .list-group .list-form .list-group .list-item {
+        min-width: 100%;
+      }
+
+      .addable .list-form, .addable .list-item {
+        min-width: 100%;
+      }
+
+      .list-group .list-form {
+        
+      }
+
+      .list-group .list-item {
+        padding: 10px;
+        box-sizing: border-box;
+      }
+
+
+    /* Checkboxes */
+      paper-checkbox input[type=checkbox] {
+        display: none;
+      }
+
+    /* Selects */
+      .select-wrapper {
+        position: relative;
+      }
+
+      .select-wrapper .pseudo-select {
+        opacity: 0;
+        display: none;
+        transition: opacity 250ms ease-out;
+        position: absolute;
+        top: 100%;
+        width: 106%;
+        background-color: white;
+        box-shadow: -2px 1px 10px #888;
+        margin-top: -11px;
+        z-index: 1;
+        margin-left: -3%;
+      }
+
+      .select-wrapper.opened .pseudo-select {
+        opacity: 1;
+        display: block;
+      }
+
+      .select-wrapper input.pseudo-select-input {
+        padding-right: 20px;
+        box-sizing: border-box;
+      }
+
+      .select-wrapper .select-icon {
+        position: absolute;
+        right: -6px;
+        width: 35px;
+        bottom: -6px;
+        height: 35px;
+      }
+
+      /* Firefox fix */
+      .select-wrapper .select-icon svg {
+        width: 35px;
+        right: 0;
+        left: auto;
+      }
+
+      .select-wrapper .pseudo-select > div {
+        min-height: 2em;
+        border-bottom: solid 1px;
+        padding: 5px 3%;
+        position: relative;
+      } 
+
+      .select-wrapper .pseudo-select > div:hover {
+        background-color: #D5DAFF;
+      }
+
+      .select-wrapper .pseudo-select > div paper-checkbox {
+        float: left;
+        margin-right: 15px;
+      }
+
+      .input.id {
+        display: none;
+      }
+
+      /* Autocomplete */
+
+      .autocomplete-selector {
+        position: absolute;
+        background-color: white;
+        box-shadow: -2px 1px 10px #888;
+        z-index: 1;
+        padding: 5px;
+        border: solid 1px #888;
+        box-sizing: border-box;
+        margin-top: -11px;
+      }
+
+      .autocomplete-selector .autocomplete-list-item {
+        border-bottom: solid 1px #ccc;
+        margin-top: 5px;
+        padding: 0px 10px 0px 0px;
+      }
+
+      .autocomplete-selector .autocomplete-list-item:last-of-type {
+        border-bottom: 0px;
+      }
+
+      .autocomplete-selector .autocomplete-list-item.core-selected {
+        background-color: #D5DAFF;
+      }
+
+      .autocomplete-selector .autocomplete-list-item:hover {
+        background-color: #D5DAFF;
+      }
+
+      /* Submit Button */
+
+      #submit-button, .step .next-button, .step .back-button {
+        margin-top: 15px;
+        margin-bottom: 5px;
+        padding-left: 30px;
+        padding-right: 30px;
+        background-color: #5bc0de;
+        border-color: #46b8da;
+        color: white;
+        clear: both;
+      }
+
+      .stepped .step .back-button {
+        display: none;
+      }
+
+      .stepped .step ~ .step .back-button {
+        display: inline-block;
+        margin-right: 15px;
+      }
+
+      .stepped #submit-button, .stepped .next-button {
+        float: right;
+        clear: inherit;
+      }
+
+      .stepped .back-button {
+        float: left;
+      }
+
+      #submit-button.in-transit span{
+        display: none;
+      }
+
+      #submit-button.in-transit form-spinner {
+        display: block;
+      }
+
+      #submit-button form-spinner {
+        display: none;
+      }
+    </style>
+    <!-- TODO: structures should be arrays to preserve order -->
+    <form id="rails_form" _action="{{ action }}" method="{{ method }}" enctype="multipart/form-data">
+      <div id='inputs-wrapper'>
+
+      </div>
+
+      <div class='sumbit-button-wrapper'>
+        <paper-button id='submit-button' raised>
+          <span class='submit-text'>{{ submitText }}</span>
+          <form-spinner height="1.5" width="1.5" unit='em'></form-spinner>
+        </paper-button>
+        <template if="{{ xhr }}">
+          <core-xhr id='xhr'></core-xhr>
+        </template>
+      </div> 
+      
+    </form>
+  </template>
+  <script>
+    Polymer( Polymer.mixin ({
+      publish: {
+        scope: "",
+        action: "",
+        method: "POST",
+        structure: null,
+        data: null,
+        submitText: "Submit",
+        xhr: false,
+        unscopedData: null
+      },
+
+      jsonData: null,
+      inTransit: false,
+      steps: null,
+
+      created: function(){
+        this.structure = [];
+        this.inputList = [];
+        
+        this.errors = {};
+        this.validatedInputs = {};
+
+        var data = this.data === null ? {} : this.data;
+        if (!!this.scope && this.scope.replace(/\s/g, "").length > 0){
+          if (data[this.scope] === void(0)) data[this.scope] = {};
+          this.data = data[this.scope];
+        } else {
+          this.data = data;
+        }
+
+        this.unscopedData = data;
+        this.jsonData = {};
+      },
+
+      domReady: function(){
+        this.buildForm();
+
+        var form = this.shadowRoot.querySelector("form"),
+            button = this.shadowRoot.querySelector("#submit-button");
+
+        button.addEventListener("click", function(e){
+          this.submit();
+        }.bind(this), false)
+
+        form.addEventListener("change", function(e){
+          var group = this.findParent(e.target, ".list-group")
+          if (!!group){
+            this.checkForBlank(group);
+          }
+        }.bind(this), true)
+
+        var spinner = button.querySelector('form-spinner');
+        new PathObserver(this, 'inTransit').open(function(){
+          if (this.inTransit){
+            spinner.start();
+            this.addClass(button, 'in-transit');
+          } else {
+            spinner.stop();
+            this.removeClass(button, 'in-transit');
+          }
+        }.bind(this));
+
+      },
+
+      submit: function(){
+        // console.log(this.action, this.unscopedData);
+        // return;    
+        var form = this.shadowRoot.querySelector("form"),
+            button = this.shadowRoot.querySelector("#submit-button");
+
+        var callback = function(resp){
+          this.inTransit = false;
+          this.handleXhrCallback(resp);
+        }.bind(this)
+        console.log(1)
+        if (this.inTransit) return;
+        console.log(2)
+        if (this.isFormInvalid()) return; 
+        console.log(3)
+        if (this.action !== null){
+          if (this.xhr){
+            console.log(4)
+            this.inTransit = true;
+        
+            if (!!this.scope && this.scope.length > 0){
+              var data = {};
+              data[this.scope] = this.data;
+            } else {
+              data = this.data;
+            }
+
+            this.$.xhr.request({ 
+              method: this.method, 
+              url: this.action, 
+              body: new FormData(form), 
+              callback: callback
+              //headers: { "Content-type": "application/json", "Accept": "application/json" }
+            })
+            console.log(5)
+          } else {
+            this.inTransit = true;
+            form.submit();
+          }
+        }
+      },
+
+      handleXhrCallback: function(){
+        
+      },
+
+      buildForm: function(){
+        var wrapper = this.shadowRoot.querySelector("#inputs-wrapper"),
+            self = this;
+
+        if (!Array.isArray(this.structure)) return;
+
+        this.buildStructure(this.structure, this.data, wrapper, this.scope);
+
+        this.steps = wrapper.querySelectorAll(".step.form-step");
+        if (this.steps.length > 0){
+          this.addClass(this.shadowRoot.querySelector("form"), "stepped");
+          this.showStep(0);
+
+          this.steps[this.steps.length - 1].querySelector(".next-button").style.display = 'none';
+        }
+      },
+
+      currentStep: 0,
+      showStep: function(index){
+        for (var i=0; i<this.steps.length; i++){
+          if (i === index){
+            this.steps[i].style.display = "";
+          } else {
+            this.steps[i].style.display = "none";
+          }
+        }
+
+        if (index === this.steps.length - 1){
+          this.shadowRoot.querySelector("#submit-button").style.display = "";
+        } else {
+          this.shadowRoot.querySelector("#submit-button").style.display = "none";
+        }
+      },
+
+      nextStep: function(){
+        if (this.currentStep < this.steps.length - 1){
+          this.currentStep += 1;
+          this.showStep(this.currentStep);
+        }
+      },
+
+      previousStep: function(){
+        if (this.currentStep > 0){
+          this.currentStep -= 1;
+          this.showStep(this.currentStep);
+        }
+      },
+
+      updateStructureDOM: function(splices, structure, data, wrapper, scope, dom, domKeys){
+        var self = this,
+            items = wrapper.querySelectorAll(".list-group");
+
+        for (var i=0; i<splices.length; i++){
+          /* delete removed children */
+          for (var j=0; j<splices[i].removed.length; j++){
+            var key = splices[i].removed[j].key,
+                element = domKeys[key];
+
+            element.parentNode.removeChild(element),
+            dom.splice(dom.indexOf(element), 1);
+
+            delete dom[key];
+            delete data[key];
+          }
+
+          /* add new children */
+          for (var j=0; j<splices[i].addedCount; j++){
+            var index = splices[i].index + j,
+                previousElement = dom[index -1],
+                field = self.createField(structure[index], data, scope);
+
+            if (!previousElement){
+              wrapper.appendChild(field);
+            } else {
+              previousElement.parentNode.insertBefore(field, previousElement.nextSibling);
+            }
+
+            dom.push(field);
+            domKeys[structure[index].key] = field;
+          }
+        }
+      },
+
+      buildStructure: function(structure, data, wrapper, scope){
+        /* handling DOM insertion and removal */
+        var dom = [],
+            domKeys = {},
+            self = this;
+
+        new ArrayObserver(structure).open(function(splices){
+          self.updateStructureDOM(splices, structure, data, wrapper, scope, dom, domKeys);
+          self.fire("structure-changed", { ref: this });
+        });
+        
+        /* actually building the form */
+        for (var i=0; i<structure.length; i++){
+          var field = self.createField(structure[i], data, scope)
+          wrapper.appendChild(field);
+          
+          dom.push(field);
+          domKeys[structure[i].key] = field;
+
+          if ((structure[i].type === "nest") && structure[i].multiple){
+            var watched_data = !!structure[i].unscoped ? this.unscopedData[structure[i].key] : data[structure[i].key];
+            new ArrayObserver(watched_data).open( (function(s, f){
+              return function(splices){
+                var nField = self.createField(s, data, scope);
+                f.parentNode.insertBefore(nField, f);
+                f.parentNode.removeChild(f);
+                f = nField; 
+
+                self.fire("data-inserted", {ref: this}); 
+              };
+            })(structure[i], field) );
+          }
+        }
+
+        return wrapper;
+      },
+
+      createField: function(structure, data, scope){
+        var key = structure.key,
+            self = this;
+        
+        if (structure.type === "group"){
+          var wrap = this.createWithAttributes("div", {"class": ["group", structure.key, structure.additionalClasses].join(" ")}),
+              contents = this.buildStructure(structure.structure, data, wrap, scope);
+
+          return wrap;
+        } else if (structure.type === "step") { 
+          var wrap = this.createWithAttributes("div", {"class": ["step form-step", structure.key, structure.additionalClasses].join(" ")}),
+              next_button = this.createWithAttributes("paper-button", { "class": "next-button", text: (structure.nextText || "Next"), raised: true }),
+              back_button = this.createWithAttributes("paper-button", { "class": "back-button", text: (structure.backText || "Back"), raised: true }),
+              contents = this.buildStructure(structure.structure, data, wrap, scope);
+
+          next_button.addEventListener("click", function(){ this.nextStep(); }.bind(this), false);
+          back_button.addEventListener("click", function(){ this.previousStep(); }.bind(this), false);
+
+          wrap.appendChild(back_button);
+          wrap.appendChild(next_button);
+          
+          return wrap;
+        } else if (structure.type === "nest"){
+          var wrap = self.createWithAttributes("div", {"class": "nest " + key}),
+              nested_data = self.scopeNestData(structure, key, data),
+              nested_scope = self.updateScope(structure, key, scope);
+                  
+          if (structure.multiple){
+            if (structure.allowAdd) this.createAddButton(wrap, structure, nested_data, key, scope) 
+          
+            for (var i=0; i<nested_data.length; i++){
+              var item_wrapper = this.createWithAttributes("div", {"class": "list-group"});
+              this.buildStructure(structure.structure, nested_data[i], item_wrapper, this.addIndex(nested_scope, i));
+              if (structure.allowAdd) this.createRemoveButton(item_wrapper, nested_data, i, structure.minItems)
+              
+              wrap.appendChild(item_wrapper);
+              this.checkForBlank(item_wrapper);
+            }
+          } else {
+            self.buildStructure(structure.structure, nested_data, wrap, nested_scope);
+          }
+
+          return wrap;
+
+        } else {
+          //TODO: set defaults here
+          var options = structure.options || {},
+              fieldData = self.scopeFieldData((options.unscoped ? self.unscopedData : data), structure, key),
+              wrap = self.createWithAttributes("div", {"class": "input " + structure.type + " " + key}),
+              inputElement = self.createInput(structure, fieldData, key, scope);
+
+          wrap.appendChild(inputElement);
+          return wrap;
+        }
+      },
+
+      getField: function(key){
+        var key = key.split("."),
+            structure = this.structure;
+        for (var i=0; i<key.length; i++){
+          if (!structure) return null;
+          var field = structure.filter(function(item){ return item.key === key[i] })[0];
+          if (!field) return null;
+          
+          structure = field.structure;
+        }
+
+        return field;
+      },
+
+      loadData: function(data){
+        //TODO: deal with unscoped data somehow
+        var recursive = function(d1, d2, structure){
+          if (Array.isArray(d1) && Array.isArray(d2)){
+            for (var i=0; i<d2.length; i++){
+              if (!d1[i]) d1.push({});
+              recursive(d1[i], d2[i], structure);
+            }
+          } else {
+            for (var i=0; i<structure.length; i++){
+              if (d2[structure[i].key] !== void(0)){
+                if (structure[i].type === 'nest'){
+                  recursive(d1[structure[i].key], d2[structure[i].key], structure[i].structure);
+                } else {
+                  d1[structure[i].key] = d2[structure[i].key];
+                }
+              }
+            }
+          }
+        }
+
+        this.async(function(){
+          recursive(this.data, data, this.structure);
+        });
+      }
+    }, FormHelpers, Validation, Autocomplete));
+  </script>
+</polymer-element>

@@ -1,0 +1,132 @@
+<script>
+	var Validation = {
+		addValidation: function(type, input, structure, key, data){
+			//TODO should validate everything
+		    if (structure.required){
+		        var fn = function(k){ return this.validate(structure.type, input, true, data, k); }.bind(this, key)
+		    } else if (!!structure.validates){
+		    	var fn =  function(k){ return this[structure.validates](type, input, true || false, data, k) }.bind(this, key)
+		    } else {
+		    	var fn = function(){ return false; }
+		    }
+
+		    var key = this.genIndexStoreKey();
+		    this.validatedInputs[key] = {input: input, fn: fn};
+		    input.addEventListener('change', fn, false);
+		    input.addEventListener('DOMNodeRemoved', function(){ delete this.validatedInputs[key] }.bind(this), false);
+		},
+
+		genIndexStoreKey: function(){
+	      var key = "_" + ((Math.random() * 1000000) | 0); 
+	      while(this.validatedInputs[key] !== void(0)){
+	        key = "_" + ((Math.random() * 1000000) | 0);
+	      }
+
+	      return key;
+	    },
+		
+		invalidate: function(type, input, isInvalid){
+			var parent = this.findParent(input, 'gc-input-decorator'),
+				wrapper = this.findParent(input, '.input-wrapper'),
+				group = this.findParent(input, '.list-group'),
+				form = this.shadowRoot.querySelector("form");
+			
+			if (!!parent) parent.isInvalid = isInvalid;
+			if (isInvalid){
+				this.errors[input.id] = "ERROR!!!!!!!!!"
+				if (!!wrapper) this.addClass(wrapper, "is-invalid");
+				if (!!group) this.addClass(group, "is-invalid");
+			} else {
+				delete this.errors[input.id];
+				if (!!wrapper) this.removeClass(wrapper, 'is-invalid');
+				if (!!group) this.removeClass(group, "is-invalid");
+			}
+
+			if (Object.keys(this.errors).length === 0){
+				if (!!form) this.removeClass(form, 'has-errors')
+			} else {
+				if (!!form) this.addClass(form, 'has-errors')
+			}
+		},
+
+		validate: function(type, input, required, data, key){
+			var validators = {
+				string: function(){
+		        	return !(required && input.value.replace(/(^ *| *$)/g, "").length > 0);
+		        },
+
+		        email: function(){
+		         	return !(required && /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(input.value))
+		        },
+
+		        hidden: function(){
+					return false;		          
+		        }.bind(this),
+
+		        json: function(){
+		         	return false
+		        }.bind(this),
+
+		        password: function(){
+		        	return !(required && input.value.length > 0);
+		        }.bind(this),
+
+		        integer: function(){
+		         	return !(required && input.value.length > 0 && !isNaN(input.value))
+		        }.bind(this),
+
+		        url: function(){
+		          return !(required && /^(ht|f)tps?:\/\/[a-z0-9-\.]+\.[a-z]{2,4}\/?([^\s<>\#%"\,\{\}\\|\\\^\[\]`]+)?$/.test(input.value))
+		        }.bind(this),
+
+		        textarea: function(){
+		        	return !(required && input.value.replace(/(^ *| *$)/g, "").length > 0);
+		        }.bind(this),
+
+		        checkbox: function(){
+		        	return false
+		        }.bind(this),
+
+		        date: function(){
+		         	return false
+		        }.bind(this),
+
+		        location: function(){
+		        	return data[key].lat === null || data[key].lng === null
+		        }.bind(this),
+
+		        image: function(){
+		        	return !(required && input.value.length > 0)
+		        }.bind(this),
+
+		        file: function(){
+		        	return !(required && input.value.length > 0)
+		        }.bind(this),
+
+		        select: function(){
+		        	return false;
+		        }
+			}
+
+			var isInvalid = (!!validators[type] && validators[type]())
+			this.invalidate(type, input, isInvalid);
+			
+			return isInvalid;
+		},
+
+		isFormInvalid: function(){
+			var isInvalid = false;
+			for (var x in this.validatedInputs){
+				if (!document.body.contains(this.validatedInputs[x].input)){
+					delete this.validatedInputs[x];
+					continue;
+				}
+
+				if (this.validatedInputs[x].fn()){
+					isInvalid = true;
+				}
+			}
+			return isInvalid;
+		}
+	}
+</script>
