@@ -332,7 +332,7 @@
 
       setOptions(structure, default_structure);
       
-      return this.getElement(structure, data, key, scope);
+      return this.inputs[structure.type].call(this, structure, data, key, scope);
       //this.inputList.push(obj)
     },
 
@@ -368,352 +368,342 @@
       }
     },
 
-    getElement: function(structure, data, key, scope){
-      data = data || this.data;
+    inputs: {
+      string: function(structure, data, key, scope){
+        return this.createBasicInput("text", structure, data, key, scope);
+      },
 
-      var inputs = {
-        string: function(){
-          return this.createBasicInput("text", data, structure, key, scope);
-        }.bind(this),
+      email: function(structure, data, key, scope){
+        return this.createBasicInput("text", structure, data, key, scope);
+      },
 
-        email: function(){
-          return this.createBasicInput("text", data, structure, key, scope);
-        }.bind(this),
+      hidden: function(structure, data, key, scope){
+        return this.createBasicInput("hidden", structure, data, key, scope);
+      },
 
-        hidden: function(){
-          return this.createBasicInput("hidden", data, structure, key, scope);
-        }.bind(this),
+      json: function(structure, data, key, scope){
+        return this.createJSONField(structure, data, key, scope);
+      },
 
-        json: function(){
-          return this.createJSONField(structure.fields, data, structure, key, scope);
-        }.bind(this),
+      password: function(structure, data, key, scope){
+        return this.createBasicInput("password", structure, data, key, scope);
+      },
 
-        password: function(){
-          return this.createBasicInput("password", data, structure, key, scope);
-        }.bind(this),
+      integer: function(structure, data, key, scope){
+        return this.createBasicInput("text", structure, data, key, scope);
+      },
 
-        integer: function(){
-          return this.createBasicInput("text", data, structure, key, scope);
-        }.bind(this),
+      url: function(structure, data, key, scope){
+        return this.createBasicInput("text", structure, data, key, scope);
+      },
 
-        url: function(){
-          return this.createBasicInput("text", data, structure, key, scope);
-        }.bind(this),
+      textarea: function(structure, data, key, scope){
+        return this.createBasicInput("textarea", structure, data, key, scope)
+      },
 
-        textarea: function(){
-          return this.createBasicInput("textarea", data, structure, key, scope)
-        }.bind(this),
+      checkbox: function(structure, data, key, scope){
+        var wrap = this.createWithAttributes("div", {"class": "checkbox-wrapper"}),
+            box = document.createElement("paper-checkbox"),
+            input = this.createWithAttributes('input', {type: "checkbox"}),
+            actual = this.createWithAttributes('input', {type: "hidden", name: this.updateFieldScope(structure, key, scope)});
 
-        checkbox: function(){
-          var wrap = this.createWithAttributes("div", {"class": "checkbox-wrapper"}),
-              box = document.createElement("paper-checkbox"),
-              input = this.createWithAttributes('input', {type: "checkbox"}),
-              actual = this.createWithAttributes('input', {type: "hidden", name: this.updateFieldScope(structure, key, scope)});
+        box.label = this.capitalize(structure.label || key);
+        box.appendChild(input);
+        wrap.appendChild(box);
+        wrap.appendChild(actual);
 
-          box.label = this.capitalize(structure.label || key);
-          box.appendChild(input);
-          wrap.appendChild(box);
-          wrap.appendChild(actual);
+        box.addEventListener("change", function(e){
+          data[key] = e.target.checked ? 1 : 0;
+          actual.value = data[key];
+          input.checked = e.target.checked;
+        }.bind(this), false)
 
-          box.addEventListener("change", function(e){
-            data[key] = e.target.checked ? 1 : 0;
-            actual.value = data[key];
-            input.checked = e.target.checked;
-          }.bind(this), false)
+        return wrap;
 
-          return wrap;
+      },
 
-        }.bind(this),
+      date: function(structure, data, key, scope){
+        var wrapper =  this.createWithAttributes("div", {"class": "date-wrapper"}),
+            decorator = this.createWithAttributes("gc-input-decorator", { label: this.capitalize(structure.label || key.replace(/_/g, " ")), floatingLabel: structure.options.floatingLabel}),
+            visibleInput = document.createElement("input"),
+            input = this.createWithAttributes("input", {type: "hidden", name: this.updateFieldScope(structure, key, scope) })
 
-        date: function(){
-          var wrapper =  this.createWithAttributes("div", {"class": "date-wrapper"}),
-              decorator = this.createWithAttributes("gc-input-decorator", { label: this.capitalize(structure.label || key.replace(/_/g, " ")), floatingLabel: structure.options.floatingLabel}),
-              visibleInput = document.createElement("input"),
-              input = this.createWithAttributes("input", {type: "hidden", name: this.updateFieldScope(structure, key, scope) })
+        decorator.appendChild(visibleInput);
+        wrapper.appendChild(decorator);
+        wrapper.appendChild(input);
 
-          decorator.appendChild(visibleInput);
-          wrapper.appendChild(decorator);
-          wrapper.appendChild(input);
+        var picker = new Pikaday({ field: visibleInput, bound: false, onSelect: function(){
+          data[key] = picker._d.getFullYear() + "-" + (picker._d.getMonth() + 1) + "-" + picker._d.getDate();
+        }.bind(this) });
 
-          var picker = new Pikaday({ field: visibleInput, bound: false, onSelect: function(){
-            data[key] = picker._d.getFullYear() + "-" + (picker._d.getMonth() + 1) + "-" + picker._d.getDate();
-          }.bind(this) });
+        visibleInput.addEventListener("focus", function(){ picker.show(); });
+        new PathObserver(data, key).open(function(){ input.value = data[key]; });
 
-          visibleInput.addEventListener("focus", function(){ picker.show(); });
-          new PathObserver(data, key).open(function(){ input.value = data[key]; });
+        return wrapper;
+      },
 
-          return wrapper;
-        }.bind(this),
+      select: function(structure, data, key, scope){
+        var values = structure.values;
 
-        select: function(){
-          var values = structure.values;
+        var wrapper = this.createWithAttributes("div", {"class": "select-wrapper"}),
+            decorator = this.createWithAttributes("gc-input-decorator", { label: this.capitalize(structure.label || key), floatingLabel: structure.options.floatingLabel}),
+            secretInput = this.createWithAttributes('input', {type: 'hidden', name: this.updateFieldScope(structure, key, scope)}),
+            input = this.createWithAttributes("input", { type: "text", name: "", "class": "pseudo-select-input", disabled: true }),
+            select = this.createWithAttributes("core-selector", {valueattr: "val", "class": "pseudo-select", multi: (!!structure.multi) });
+        
+        //secretInput.bind('value', new PathObserver(data, key));
+        //select.bind('selected', new PathObserver(data, key));
+        new PathObserver(data, key).open(function(){
+          secretInput.value = !!structure.multi ? JSON.stringify(data[key]) : data[key];
+          select.selected = data[key];
+        })
 
-          var wrapper = this.createWithAttributes("div", {"class": "select-wrapper"}),
-              decorator = this.createWithAttributes("gc-input-decorator", { label: this.capitalize(structure.label || key), floatingLabel: structure.options.floatingLabel}),
-              secretInput = this.createWithAttributes('input', {type: 'hidden', name: this.updateFieldScope(structure, key, scope)}),
-              input = this.createWithAttributes("input", { type: "text", name: "", "class": "pseudo-select-input", disabled: true }),
-              select = this.createWithAttributes("core-selector", {valueattr: "val", "class": "pseudo-select", multi: (!!structure.multi) });
-          
-          //secretInput.bind('value', new PathObserver(data, key));
-          //select.bind('selected', new PathObserver(data, key));
-          new PathObserver(data, key).open(function(){
-            secretInput.value = !!structure.multi ? JSON.stringify(data[key]) : data[key];
-            select.selected = data[key];
-          })
+        if (!structure.blank){ 
+          data[key] = values.length > 0 ? values[0][0] : (!!structure.multi ? [] : "");
+          input.value = values.length > 0 ? values[0][1] : "";
+        }
+        var self = this;
 
-          if (!structure.blank){ 
-            data[key] = values.length > 0 ? values[0][0] : (!!structure.multi ? [] : "");
-            input.value = values.length > 0 ? values[0][1] : "";
-          }
-          var self = this;
-
-          if (!structure.opened){
-          
-            select.addEventListener("click", function(e){
-              if (!!structure.multi) e.stopPropagation();
-            }, false);
-
-            decorator.addEventListener('click', function(e){
-              if (self.hasClass(wrapper, 'opened')) return;
-
-              e.stopPropagation();
-              decorator.updateLabelVisibility("down");
-              
-              if (!structure.scrollTarget){
-                self.addClass(wrapper, 'opened');
-              } else {
-                var scrollTarget = document.querySelector(structure.scrollTarget);
-
-                if (scrollTarget === document.body){
-                  var coords = wrapper.getBoundingClientRect();
-                      coords.top = coords.top + window.pageYOffset + wrapper.offsetHeight;
-                      coords.left = coords.left + window.pageXOffset;
-                } else {
-                  var parentCoords =  scrollTarget.tagName.indexOf("-") !== -1 ? scrollTarget.scroller.getBoundingClientRect() : scrollTarget.getBoundingClientRect(),
-                      wrapperCoords = wrapper.getBoundingClientRect(),
-                      scrollTop = scrollTarget.tagName.indexOf("-") !== -1 ? scrollTarget.scroller.scrollTop : scrollTarget.scrollTop;
-                  
-                  var coords = {
-                    width: wrapperCoords.width,
-                    height: wrapperCoords.height,
-                    top: wrapperCoords.top - parentCoords.top + scrollTop + wrapperCoords.height,
-                    left: wrapperCoords.left - parentCoords.left + scrollTarget.scrollLeft
-                  }
-                }
-                    
-                select.style.width = coords.width + "px";
-                select.style.top = (coords.top ) + "px";
-                select.style.left = (coords.left) + "px";
-
-                scrollTarget.appendChild(select);
-              }
-
-              window.addEventListener('click', function(){
-                if (!structure.scrollTarget){
-                  self.removeClass(wrapper, 'opened');
-                } else {
-                  wrapper.appendChild(select);
-                }
-
-                window.removeEventListener('click', arguments.callee);
-              }, false);
-            }, false);
-          } else {
-            self.addClass(wrapper, 'opened');
-            decorator.updateLabelVisibility("down"); 
-          }
-
-          select.addEventListener('core-select', function(){
-            if (!structure.multi) self.removeClass(wrapper, 'opened');
-            decorator.updateLabelVisibility(select.selected ? select.selected : "");
-
-            self.async(function(){
-              if (!!structure.multi){
-                input.value = select === null ? "" : select.selectedItem.map(function(s){ return s.textContent }).join(', ');
-                data[key] = select.selectedItem.map(function(s){ return s.getAttribute('val') });
-              } else {
-                input.value = select === null ? "" : select.selectedItem.textContent;
-                data[key] = select.selectedItem.getAttribute('val');
-              }
-            });
+        if (!structure.opened){
+        
+          select.addEventListener("click", function(e){
+            if (!!structure.multi) e.stopPropagation();
           }, false);
-          
-          var build_options = function(){
-            var keys = {};
 
-            while (select.firstChild) { select.removeChild(select.firstChild) };
-            if (!!structure.blank) select.appendChild(this.createWithAttributes("div", {val: "huh", text: (typeof structure.blank === "string" ? structure.blank : "") }))
-            for (var i=0; i<structure.values.length; i++){
-              var div = self.createWithAttributes("div", {val: structure.values[i][0], text: structure.values[i][1] });
-              
-              if (!!structure.multi){
-                var checkbox = this.createWithAttributes("paper-checkbox", {"class": "select-check"});
-                div.appendChild(checkbox);
-              }
-              select.appendChild(div);
-            }
+          decorator.addEventListener('click', function(e){
+            if (self.hasClass(wrapper, 'opened')) return;
 
-            var nil = structure.values.length === 0 ? self.addClass(wrapper, 'is-blank') : self.removeClass(wrapper, 'is-blank');
-                nil = structure.values.length === 1 ? self.addClass(wrapper, 'is-single') : self.removeClass(wrapper, 'is-single');
-          
-            //if (!structure.blank && values.length > 0) select.selected = values[0][0];
-          }.bind(this);
+            e.stopPropagation();
+            decorator.updateLabelVisibility("down");
+            
+            if (!structure.scrollTarget){
+              self.addClass(wrapper, 'opened');
+            } else {
+              var scrollTarget = document.querySelector(structure.scrollTarget);
 
-          build_options();
-          new ArrayObserver(structure.values).open(function(){
-            build_options();
-          })
-
-          //Binding the checkboxes state to whether or not they're selected
-          if (!!structure.multi){
-            new ArrayObserver(select.selection).open(function(changed){
-              for (var j=0; j<changed.length; j++){
-                var changes = changed[j];
-                for (var i=0; i<changes.addedCount; i++){
-                  select.selectedItem[changes.index + i].querySelector("paper-checkbox").checked = true;
-                } 
-
-                for (var i=0; i<changes.removed.length; i++){
-                  changes.removed[i].querySelector("paper-checkbox").checked = false;
+              if (scrollTarget === document.body){
+                var coords = wrapper.getBoundingClientRect();
+                    coords.top = coords.top + window.pageYOffset + wrapper.offsetHeight;
+                    coords.left = coords.left + window.pageXOffset;
+              } else {
+                var parentCoords =  scrollTarget.tagName.indexOf("-") !== -1 ? scrollTarget.scroller.getBoundingClientRect() : scrollTarget.getBoundingClientRect(),
+                    wrapperCoords = wrapper.getBoundingClientRect(),
+                    scrollTop = scrollTarget.tagName.indexOf("-") !== -1 ? scrollTarget.scroller.scrollTop : scrollTarget.scrollTop;
+                
+                var coords = {
+                  width: wrapperCoords.width,
+                  height: wrapperCoords.height,
+                  top: wrapperCoords.top - parentCoords.top + scrollTop + wrapperCoords.height,
+                  left: wrapperCoords.left - parentCoords.left + scrollTarget.scrollLeft
                 }
               }
-            })
+                  
+              select.style.width = coords.width + "px";
+              select.style.top = (coords.top ) + "px";
+              select.style.left = (coords.left) + "px";
+
+              scrollTarget.appendChild(select);
+            }
+
+            window.addEventListener('click', function(){
+              if (!structure.scrollTarget){
+                self.removeClass(wrapper, 'opened');
+              } else {
+                wrapper.appendChild(select);
+              }
+
+              window.removeEventListener('click', arguments.callee);
+            }, false);
+          }, false);
+        } else {
+          self.addClass(wrapper, 'opened');
+          decorator.updateLabelVisibility("down"); 
+        }
+
+        select.addEventListener('core-select', function(){
+          if (!structure.multi) self.removeClass(wrapper, 'opened');
+          decorator.updateLabelVisibility(select.selected ? select.selected : "");
+
+          self.async(function(){
+            if (!!structure.multi){
+              input.value = select === null ? "" : select.selectedItem.map(function(s){ return s.textContent }).join(', ');
+              data[key] = select.selectedItem.map(function(s){ return s.getAttribute('val') });
+            } else {
+              input.value = select === null ? "" : select.selectedItem.textContent;
+              data[key] = select.selectedItem.getAttribute('val');
+            }
+          });
+        }, false);
+        
+        var build_options = function(){
+          var keys = {};
+
+          while (select.firstChild) { select.removeChild(select.firstChild) };
+          if (!!structure.blank) select.appendChild(this.createWithAttributes("div", {val: "huh", text: (typeof structure.blank === "string" ? structure.blank : "") }))
+          for (var i=0; i<structure.values.length; i++){
+            var div = self.createWithAttributes("div", {val: structure.values[i][0], text: structure.values[i][1] });
+            
+            if (!!structure.multi){
+              var checkbox = this.createWithAttributes("paper-checkbox", {"class": "select-check"});
+              div.appendChild(checkbox);
+            }
+            select.appendChild(div);
           }
 
-          new PathObserver(structure, 'label').open(function(){
-            decorator.label = this.capitalize(structure.label || key) 
-          }.bind(this));
+          var nil = structure.values.length === 0 ? self.addClass(wrapper, 'is-blank') : self.removeClass(wrapper, 'is-blank');
+              nil = structure.values.length === 1 ? self.addClass(wrapper, 'is-single') : self.removeClass(wrapper, 'is-single');
+        
+          //if (!structure.blank && values.length > 0) select.selected = values[0][0];
+        }.bind(this);
 
-          wrapper.appendChild(decorator);
-          decorator.appendChild(this.createWithAttributes("core-icon", {icon: "expand-more", "class": 'select-icon'}));
-          decorator.appendChild(input);
-          wrapper.appendChild(select);
-          wrapper.appendChild(secretInput);
-          return wrapper;
-        }.bind(this),
+        build_options();
+        new ArrayObserver(structure.values).open(function(){
+          build_options();
+        })
 
-        location: function(){
-          var wrapper = document.createElement("gc-input-decorator"),
-              input = document.createElement( "input" );
-          //google-location-input
-          if (!data[key]) data[key] = null
+        //Binding the checkboxes state to whether or not they're selected
+        if (!!structure.multi){
+          new ArrayObserver(select.selection).open(function(changed){
+            for (var j=0; j<changed.length; j++){
+              var changes = changed[j];
+              for (var i=0; i<changes.addedCount; i++){
+                select.selectedItem[changes.index + i].querySelector("paper-checkbox").checked = true;
+              } 
 
-          wrapper.label = this.capitalize(structure.label || key);
-          wrapper.floatingLabel = structure.options.floatingLabel;
-
-          input.type = "text";
-          input.name = this.updateFieldScope(structure, key, scope);
-          input.bind('value', new PathObserver(data[key], "value"))
-
-          this.addValidation('location', input, structure, key, data);
-
-          var autocomplete = new google.maps.places.Autocomplete(
-            input, ( !!structure.gmap_types ? { types: [structure.gmap_types] } : {} ) 
-          );
-
-          var self = this;
-          google.maps.event.addListener(autocomplete, 'place_changed', function () {
-            var place = autocomplete.getPlace();
-            
-            data[key] = input.value;
-            // data[key].lat = place.geometry.location.lat();
-            // data[key].lng = place.geometry.location.lng();
-
-            if (!!structure.onSelect){
-              structure.onSelect(input.value, place.geometry.location.lat(),  place.geometry.location.lng())
+              for (var i=0; i<changes.removed.length; i++){
+                changes.removed[i].querySelector("paper-checkbox").checked = false;
+              }
             }
           })
+        }
 
-          wrapper.appendChild(input);
-          return wrapper;
-        }.bind(this),
+        new PathObserver(structure, 'label').open(function(){
+          decorator.label = this.capitalize(structure.label || key) 
+        }.bind(this));
 
-        image: function(){
-          var wrapper = this.createWithAttributes("span", { "class": "btn-image-upload" }),
-              input = this.createWithAttributes("input", { type: "file", name: this.updateFieldScope(structure, key, scope), required: structure.required || false }),
-              icon_wrapper = this.createWithAttributes("div", {"class": "image-icon-wrapper"}),
-              explanation = this.createWithAttributes("p", {text: "Click here to upload an image"}),
-              icon = this.createWithAttributes("core-icon", {icon: "image:photo"});
-      
-          icon_wrapper.appendChild(icon);
-          wrapper.appendChild(input);
-          wrapper.appendChild(icon_wrapper);
-          wrapper.appendChild(explanation);
+        wrapper.appendChild(decorator);
+        decorator.appendChild(this.createWithAttributes("core-icon", {icon: "expand-more", "class": 'select-icon'}));
+        decorator.appendChild(input);
+        wrapper.appendChild(select);
+        wrapper.appendChild(secretInput);
+        return wrapper;
+      },
 
-          this.addValidation('image', input, structure, key);
-          input.addEventListener("click", function(e){ e.stopPropagation(); }, true)
+      location: function(structure, data, key, scope){
+        var wrapper = document.createElement("gc-input-decorator"),
+            input = document.createElement( "input" );
+        //google-location-input
+        if (!data[key]) data[key] = null
+
+        wrapper.label = this.capitalize(structure.label || key);
+        wrapper.floatingLabel = structure.options.floatingLabel;
+
+        input.type = "text";
+        input.name = this.updateFieldScope(structure, key, scope);
+        input.bind('value', new PathObserver(data[key], "value"))
+
+        this.addValidation('location', input, structure, key, data);
+
+        var autocomplete = new google.maps.places.Autocomplete(
+          input, ( !!structure.gmap_types ? { types: [structure.gmap_types] } : {} ) 
+        );
+
+        var self = this;
+        google.maps.event.addListener(autocomplete, 'place_changed', function () {
+          var place = autocomplete.getPlace();
           
-          var self = this;
-          input.addEventListener("change", function(){
-            if (this.files.length){
-              var oFReader = new FileReader();
-              oFReader.readAsDataURL(this.files[0]);
+          data[key] = input.value;
+          // data[key].lat = place.geometry.location.lat();
+          // data[key].lng = place.geometry.location.lng();
 
-              oFReader.onload = function (oFREvent) {
-                  wrapper.style.backgroundImage = "url(" + oFREvent.target.result + ")";
-                  self.addClass(wrapper.parentNode, "has-image");
-              };
+          if (!!structure.onSelect){
+            structure.onSelect(input.value, place.geometry.location.lat(),  place.geometry.location.lng())
+          }
+        })
 
-              self.data[self.key] = this.files[0];
-            } else {
-              self.removeClass(wrapper.parentNode, 'has-image');
-              wrapper.parentNode.style.backgroundImage = "";
+        wrapper.appendChild(input);
+        return wrapper;
+      },
 
-              self.data[self.key] = null;
-            }
-          }, true)
+      image: function(structure, data, key, scope){
+        var wrapper = this.createWithAttributes("span", { "class": "btn-image-upload" }),
+            input = this.createWithAttributes("input", { type: "file", name: this.updateFieldScope(structure, key, scope), required: structure.required || false }),
+            icon_wrapper = this.createWithAttributes("div", {"class": "image-icon-wrapper"}),
+            explanation = this.createWithAttributes("p", {text: "Click here to upload an image"}),
+            icon = this.createWithAttributes("core-icon", {icon: "image:photo"});
+    
+        icon_wrapper.appendChild(icon);
+        wrapper.appendChild(input);
+        wrapper.appendChild(icon_wrapper);
+        wrapper.appendChild(explanation);
 
-          return wrapper;
-        }.bind(this),
+        this.addValidation('image', input, structure, key);
+        input.addEventListener("click", function(e){ e.stopPropagation(); }, true)
+        
+        var self = this;
+        input.addEventListener("change", function(){
+          if (this.files.length){
+            var oFReader = new FileReader();
+            oFReader.readAsDataURL(this.files[0]);
 
-        file: function(){
-          var wrapper = this.createWithAttributes("span", { "class": "btn-file-upload" }),
-              decorator = this.createWithAttributes("gc-input-decorator", { "class": "file-decorator", label: this.capitalize(structure.label || key.replace(/_/g, " ")), floatingLabel: structure.options.floatingLabel }),
-              textInput = this.createWithAttributes("input", { type: "text", "class": "file-dummy" }),
-              input = this.createWithAttributes("input", { type: "file", name: this.updateFieldScope(structure, key, scope), required: structure.required || false });
-          
-          decorator.appendChild(textInput);
-          wrapper.appendChild(input);
-          wrapper.appendChild(decorator);
+            oFReader.onload = function (oFREvent) {
+                wrapper.style.backgroundImage = "url(" + oFREvent.target.result + ")";
+                self.addClass(wrapper.parentNode, "has-image");
+            };
 
-          this.addValidation('file', input, structure, key);
-          input.addEventListener("click", function(e){ e.stopPropagation(); }, true)
-          
-          var self = this;
-          input.addEventListener("change", function(){
-            if (this.files.length){
-              textInput.value = Array.apply(null, this.files).map(function(item){ return item.name }).join(",");
-              self.addClass(wrapper.parentNode, "has-file");  
-              self.data[self.key] = this.files; 
-              decorator.updateLabelVisibility(this.files[0].name);
-           
-            } else {
-              textInput.value = "";
-              self.removeClass(wrapper.parentNode, "has-file");
-              self.data[self.key] = null;
-              decorator.updateLabelVisibility("");
-            }
-          }, true)
+            self.data[self.key] = this.files[0];
+          } else {
+            self.removeClass(wrapper.parentNode, 'has-image');
+            wrapper.parentNode.style.backgroundImage = "";
 
-          return wrapper;
-        }.bind(this),
+            self.data[self.key] = null;
+          }
+        }, true)
 
-        html: function(){
-          var content = document.createElement('div');
-          content.innerHTML = structure.content;
-          return content;
-        }.bind(this)
+        return wrapper;
+      },
 
+      file: function(structure, data, key, scope){
+        var wrapper = this.createWithAttributes("span", { "class": "btn-file-upload" }),
+            decorator = this.createWithAttributes("gc-input-decorator", { "class": "file-decorator", label: this.capitalize(structure.label || key.replace(/_/g, " ")), floatingLabel: structure.options.floatingLabel }),
+            textInput = this.createWithAttributes("input", { type: "text", "class": "file-dummy" }),
+            input = this.createWithAttributes("input", { type: "file", name: this.updateFieldScope(structure, key, scope), required: structure.required || false });
+        
+        decorator.appendChild(textInput);
+        wrapper.appendChild(input);
+        wrapper.appendChild(decorator);
+
+        this.addValidation('file', input, structure, key);
+        input.addEventListener("click", function(e){ e.stopPropagation(); }, true)
+        
+        var self = this;
+        input.addEventListener("change", function(){
+          if (this.files.length){
+            textInput.value = Array.apply(null, this.files).map(function(item){ return item.name }).join(",");
+            self.addClass(wrapper.parentNode, "has-file");  
+            self.data[self.key] = this.files; 
+            decorator.updateLabelVisibility(this.files[0].name);
+         
+          } else {
+            textInput.value = "";
+            self.removeClass(wrapper.parentNode, "has-file");
+            self.data[self.key] = null;
+            decorator.updateLabelVisibility("");
+          }
+        }, true)
+
+        return wrapper;
+      },
+
+      html: function(structure, data, key, scope){
+        var content = document.createElement('div');
+        content.innerHTML = structure.content;
+        return content;
       }
-
-      // try {
-        return inputs[structure.type]()
-      // } catch(e){
-      //  throw "Unknown field type: " + structure.type
-      // }
     },
 
-    createBasicInput: function(type, data, structure, key, scope){
+    createBasicInput: function(type, structure, data, key, scope){
+      console.log(arguments)
       var wrapper = document.createElement("gc-input-decorator"),
           input = document.createElement( type === "textarea" ? "textarea" : "input" );
       
@@ -743,7 +733,7 @@
 
     },
 
-    createJSONField: function(fields, data, structure, key, scope){
+    createJSONField: function(structure, data, key, scope){
       var wrapper = this.createWithAttributes('div', { "class": "json-wrapper" }),
           input = this.createWithAttributes("textarea", { name: this.updateFieldScope(structure, key, scope), "class": "hidden", text: JSON.stringify(data[key]) }),
           isList = structure.allowAdd;
