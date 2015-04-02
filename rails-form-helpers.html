@@ -3,11 +3,11 @@
   var FormHelpers = {
     /* Utility things */
     capitalize: function(str){
-    	if (str && str.length > 1){
-    		return str.split(" ").map( function(s){ return s[0].toUpperCase() + s.substr(1) } ).join(" ");
-    	} else {
-    		return "";
-    	}
+      if (str && str.length > 1){
+        return str.split(" ").map( function(s){ return s[0].toUpperCase() + s.substr(1) } ).join(" ");
+      } else {
+        return "";
+      }
     },
 
     findParent: function(el, selector){
@@ -89,7 +89,7 @@
       data = structure.unscoped ? this.unscopedData : data;
       //console.log("nest", key, data[key]);
       if (structure.multiple){
-    		if (data[key] === void(0)){
+        if (data[key] === void(0)){
           if (structure.allowAdd) {
             data[key] = [];
             if (!!structure.minItems){
@@ -101,17 +101,17 @@
         }
 
       } else {
-    		if (data[key] === void(0)) data[key] = {};
-    	}
+        if (data[key] === void(0)) data[key] = {};
+      }
 
-    	return data[key];
+      return data[key];
     },
 
     scopeDataToIndex: function(data, obj){
       var index = this.getIndex(obj);
 
       this.data = this.data[index];
-    	return this.data
+      return this.data
     },
 
     listItemClassName: function(index){
@@ -183,7 +183,7 @@
     createAddButton: function(wrap, structure, data, key, scope){
       var add_button = this.createWithAttributes("paper-button", {"class": "add-button " + this.scopeToClass(structure, key, scope)}),
           add_icon = this.createWithAttributes("core-icon", {icon: "add-circle-outline"}),
-          add_button_text = this.createWithAttributes("div", {text: structure.label || key.replace(/_/g)});
+          add_button_text = this.createWithAttributes("div", {text: structure.label || key.replace(/_/g, " ")});
 
       add_button.appendChild(add_icon);
       add_button.appendChild(add_button_text);
@@ -203,7 +203,6 @@
         }
         
         if (!blank) data.unshift({});
-        console.log(data);
       }.bind(this), false); 
     },
 
@@ -305,7 +304,7 @@
     createInput: function(structure, data, key, scope){
       data = data || this.data;
 
-    	var default_structure = {
+      var default_structure = {
         type: "string",
         label: "",
         options: {
@@ -343,8 +342,8 @@
       if (structure.unscoped){
         var className = key
       } else {
-    	  var className = scope.replace(/\[/g, "_").replace(/\]/g, "") + "_" + key;
-    	}
+        var className = scope.replace(/\[/g, "_").replace(/\]/g, "") + "_" + key;
+      }
       return className;
     },
 
@@ -379,7 +378,7 @@
 
         email: function(){
           return this.createBasicInput("text", data, structure, key, scope);
-        },
+        }.bind(this),
 
         hidden: function(){
           return this.createBasicInput("hidden", data, structure, key, scope);
@@ -406,18 +405,23 @@
         }.bind(this),
 
         checkbox: function(){
-          var box = document.createElement("paper-checkbox"),
-              input = this.createWithAttributes('input', {type: "checkbox", name: this.updateFieldScope(structure, key, scope)});
+          var wrap = this.createWithAttributes("div", {"class": "checkbox-wrapper"}),
+              box = document.createElement("paper-checkbox"),
+              input = this.createWithAttributes('input', {type: "checkbox"}),
+              actual = this.createWithAttributes('input', {type: "hidden", name: this.updateFieldScope(structure, key, scope)});
 
           box.label = this.capitalize(structure.label || key);
           box.appendChild(input);
+          wrap.appendChild(box);
+          wrap.appendChild(actual);
 
           box.addEventListener("change", function(e){
             data[key] = e.target.checked ? 1 : 0;
+            actual.value = data[key];
             input.checked = e.target.checked;
           }.bind(this), false)
 
-          return box;
+          return wrap;
 
         }.bind(this),
 
@@ -592,7 +596,7 @@
           var wrapper = document.createElement("gc-input-decorator"),
               input = document.createElement( "input" );
           //google-location-input
-          if (!data[key]) data[key] = { value: null, lat: null, lng: null }
+          if (!data[key]) data[key] = null
 
           wrapper.label = this.capitalize(structure.label || key);
           wrapper.floatingLabel = structure.options.floatingLabel;
@@ -604,19 +608,19 @@
           this.addValidation('location', input, structure, key, data);
 
           var autocomplete = new google.maps.places.Autocomplete(
-            input, { types: ['(cities)'] }
+            input, ( !!structure.gmap_types ? { types: [structure.gmap_types] } : {} ) 
           );
 
           var self = this;
           google.maps.event.addListener(autocomplete, 'place_changed', function () {
             var place = autocomplete.getPlace();
             
-            data[key].value = input.value;
-            data[key].lat = place.geometry.location.lat();
-            data[key].lng = place.geometry.location.lng();
+            data[key] = input.value;
+            // data[key].lat = place.geometry.location.lat();
+            // data[key].lng = place.geometry.location.lng();
 
-            if (!!structure.options.events.select){
-              structure.options.events.select(data[key])
+            if (!!structure.onSelect){
+              structure.onSelect(input.value, place.geometry.location.lat(),  place.geometry.location.lng())
             }
           })
 
@@ -646,7 +650,7 @@
               oFReader.readAsDataURL(this.files[0]);
 
               oFReader.onload = function (oFREvent) {
-                  wrapper.parentNode.style.backgroundImage = "url(" + oFREvent.target.result + ")";
+                  wrapper.style.backgroundImage = "url(" + oFREvent.target.result + ")";
                   self.addClass(wrapper.parentNode, "has-image");
               };
 
@@ -702,27 +706,27 @@
 
       }
 
-      //try {
+      // try {
         return inputs[structure.type]()
-    	//} catch(e){
-    	//	throw "Unknown field type: " + structure.type
-    	//}
+      // } catch(e){
+      //  throw "Unknown field type: " + structure.type
+      // }
     },
 
     createBasicInput: function(type, data, structure, key, scope){
       var wrapper = document.createElement("gc-input-decorator"),
-      		input = document.createElement( type === "textarea" ? "textarea" : "input" );
+          input = document.createElement( type === "textarea" ? "textarea" : "input" );
       
       wrapper.label = this.capitalize(structure.label || key);
       wrapper.floatingLabel = structure.options.floatingLabel;
       
       input.type = type;
- 			input.name = this.updateFieldScope(structure, key, scope);
+      input.name = this.updateFieldScope(structure, key, scope);
       input.value = structure.value || '';
       input.id = this.scopeToClass(structure, key, scope)
- 			if (structure.required) input.required = true;
+      if (structure.required) input.required = true;
       input.bind('value', new PathObserver(data, key)) 
-			
+      
       this.addValidation(type, input, structure, key);
       
       if (!!structure.autocomplete && typeof structure.autocomplete === "string"){
@@ -730,12 +734,12 @@
       } 
 
       if (type === 'textarea') input.rows = 3;
-      if (type !== "hidden"){	
+      if (type !== "hidden"){ 
         wrapper.appendChild(input);      
-	      return wrapper;
-	    } else {
-	    	return input;
-	    }
+        return wrapper;
+      } else {
+        return input;
+      }
 
     },
 
@@ -777,19 +781,6 @@
         wrapper.parentNode.insertBefore(nFields, wrapper);
         wrapper.parentNode.removeChild(wrapper);
         observer.close();
-        // var button = wrapper.querySelector(".add-button");
-        // console.log(button);
-        // console.log(structure.allowAdd)
-        // if (!!structure.allowAdd){
-          
-        //   if (button === null){
-        //     this.createAddButton(wrapper, structure, this.jsonData[key], key, scope)
-        //   }
-        // } else {
-        //   if (button !== null){
-        //     button.parentNode.removeChild(button);
-        //   }
-        // } 
       }.bind(this))
 
       var self = this;

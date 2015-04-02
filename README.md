@@ -1,48 +1,25 @@
 polymer-rails-forms
 ===================
+##What this does
 
-##What this gem does
-
-This gem depends on emcee and adds to your vendor/assets/components directory
-the rails-form element. Which, unsurprisingly, let's you create complex rails compatible 
-forms in polymer by simply defining a form's structure and optionally data via 
-javascript. 
+Polymer-rails-forms give you an extendable polymer element that let's you create complex 
+activerecord compatible forms in polymer by simply defining a form's structure and 
+optionally data via javascript. Check out the <a href='http://deadlykitten.com/polymer-rails-forms'>demo page</a>
+to see it in action. 
 
 ##Installation
 
 first follow the installation instructions for emcee
 
 ```
-	gem install polymer-rails-form
-	rake polymer_rails_forms:install
+	bower install --save polymer-rails-form
 ```
 
-then in your /app/assets/components/application.html file add
+then import it via 
 
 ```
-	*= require rails-forms/rails-form
+<link rel='import' href='/app/wherever/bower_components/polymer-rails-forms/rails-form.html'>
 ```
-
-##BREAKING CHANGE IN 0.3.0
-Because objects are unordered and order is generally important in forms I've updated 
-the form structures to be arrays. So rather than 
-
-```javascript
-  this.structure = {
-    myKey: {type: "string"}
-  }
-``` 
-
-your structure should look like
-
-```javascript
-  this.structure = [
-    { key: myKey, type: "string" }
-  ]
-```
-Additionally since you can no longer just do something like ```this.stucture.myKey``` to get a 
-structure's fields I've added a get field function ```this.getField("myKey")``` for nested fields
-you would just do ```this.getField("myNest.myKey")```
 
 ##Basic example
 

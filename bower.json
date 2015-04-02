@@ -1,9 +1,9 @@
 {
   "name": "polymer-rails-forms",
-  "version": "0.1.01",
+  "version": "0.1.10",
   "homepage": "https://github.com/hobberwickey/polymer-rails-forms",
   "authors": [
-    "hobberwickey <hobberwickey@gmail.com>"
+    "Joel Weber <hobberwickey@gmail.com>"
   ],
   "description": "A powerful web component for quickly building Active Record compatible forms",
   "main": "rails-form.html",

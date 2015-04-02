@@ -88,11 +88,11 @@
 		        }.bind(this),
 
 		        date: function(){
-		         	return false
+		         	return !(required && !!input.value);
 		        }.bind(this),
 
 		        location: function(){
-		        	return data[key].lat === null || data[key].lng === null
+		        	return !(required && !!input.value);
 		        }.bind(this),
 
 		        image: function(){
@@ -104,7 +104,7 @@
 		        }.bind(this),
 
 		        select: function(){
-		        	return false;
+		        	return !(required && !!input.value);
 		        }
 			}
 
