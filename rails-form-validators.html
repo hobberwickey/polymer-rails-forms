@@ -1,5 +1,63 @@
 <script>
 	var Validation = {
+		validators: {
+			string: function(){
+	        	return !(required && input.value.replace(/(^ *| *$)/g, "").length > 0);
+	        },
+
+	        email: function(){
+	         	return !(required && /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(input.value))
+	        },
+
+	        hidden: function(){
+				return false;		          
+	        }.bind(this),
+
+	        json: function(){
+	         	return false
+	        }.bind(this),
+
+	        password: function(){
+	        	return !(required && input.value.length > 0);
+	        }.bind(this),
+
+	        integer: function(){
+	         	return !(required && input.value.length > 0 && !isNaN(input.value))
+	        }.bind(this),
+
+	        url: function(){
+	          return !(required && /^(ht|f)tps?:\/\/[a-z0-9-\.]+\.[a-z]{2,4}\/?([^\s<>\#%"\,\{\}\\|\\\^\[\]`]+)?$/.test(input.value))
+	        }.bind(this),
+
+	        textarea: function(){
+	        	return !(required && input.value.replace(/(^ *| *$)/g, "").length > 0);
+	        }.bind(this),
+
+	        checkbox: function(){
+	        	return false
+	        }.bind(this),
+
+	        date: function(){
+	         	return !(required && !!input.value);
+	        }.bind(this),
+
+	        location: function(){
+	        	return !(required && !!input.value);
+	        }.bind(this),
+
+	        image: function(){
+	        	return !(required && input.value.length > 0)
+	        }.bind(this),
+
+	        file: function(){
+	        	return !(required && input.value.length > 0)
+	        }.bind(this),
+
+	        select: function(){
+	        	return !(required && !!input.value);
+	        }
+		},
+
 		addValidation: function(type, input, structure, key, data){
 			//TODO should validate everything
 		    if (structure.required){
@@ -50,65 +108,7 @@
 		},
 
 		validate: function(type, input, required, data, key){
-			var validators = {
-				string: function(){
-		        	return !(required && input.value.replace(/(^ *| *$)/g, "").length > 0);
-		        },
-
-		        email: function(){
-		         	return !(required && /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(input.value))
-		        },
-
-		        hidden: function(){
-					return false;		          
-		        }.bind(this),
-
-		        json: function(){
-		         	return false
-		        }.bind(this),
-
-		        password: function(){
-		        	return !(required && input.value.length > 0);
-		        }.bind(this),
-
-		        integer: function(){
-		         	return !(required && input.value.length > 0 && !isNaN(input.value))
-		        }.bind(this),
-
-		        url: function(){
-		          return !(required && /^(ht|f)tps?:\/\/[a-z0-9-\.]+\.[a-z]{2,4}\/?([^\s<>\#%"\,\{\}\\|\\\^\[\]`]+)?$/.test(input.value))
-		        }.bind(this),
-
-		        textarea: function(){
-		        	return !(required && input.value.replace(/(^ *| *$)/g, "").length > 0);
-		        }.bind(this),
-
-		        checkbox: function(){
-		        	return false
-		        }.bind(this),
-
-		        date: function(){
-		         	return !(required && !!input.value);
-		        }.bind(this),
-
-		        location: function(){
-		        	return !(required && !!input.value);
-		        }.bind(this),
-
-		        image: function(){
-		        	return !(required && input.value.length > 0)
-		        }.bind(this),
-
-		        file: function(){
-		        	return !(required && input.value.length > 0)
-		        }.bind(this),
-
-		        select: function(){
-		        	return !(required && !!input.value);
-		        }
-			}
-
-			var isInvalid = (!!validators[type] && validators[type]())
+			var isInvalid = (!!this.validators[type] && this.validators[type]())
 			this.invalidate(type, input, isInvalid);
 			
 			return isInvalid;
