@@ -1,59 +1,59 @@
 <script>
 	var Validation = {
 		validators: {
-			string: function(){
+			string: function(input, required){
 	        	return !(required && input.value.replace(/(^ *| *$)/g, "").length > 0);
 	        },
 
-	        email: function(){
+	        email: function(input, required){
 	         	return !(required && /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(input.value))
 	        },
 
-	        hidden: function(){
+	        hidden: function(input, required){
 				return false;		          
 	        }.bind(this),
 
-	        json: function(){
+	        json: function(input, required){
 	         	return false
 	        }.bind(this),
 
-	        password: function(){
+	        password: function(input, required){
 	        	return !(required && input.value.length > 0);
 	        }.bind(this),
 
-	        integer: function(){
+	        integer: function(input, required){
 	         	return !(required && input.value.length > 0 && !isNaN(input.value))
 	        }.bind(this),
 
-	        url: function(){
+	        url: function(input, required){
 	          return !(required && /^(ht|f)tps?:\/\/[a-z0-9-\.]+\.[a-z]{2,4}\/?([^\s<>\#%"\,\{\}\\|\\\^\[\]`]+)?$/.test(input.value))
 	        }.bind(this),
 
-	        textarea: function(){
+	        textarea: function(input, required){
 	        	return !(required && input.value.replace(/(^ *| *$)/g, "").length > 0);
 	        }.bind(this),
 
-	        checkbox: function(){
+	        checkbox: function(input, required){
 	        	return false
 	        }.bind(this),
 
-	        date: function(){
+	        date: function(input, required){
 	         	return !(required && !!input.value);
 	        }.bind(this),
 
-	        location: function(){
+	        location: function(input, required){
 	        	return !(required && !!input.value);
 	        }.bind(this),
 
-	        image: function(){
+	        image: function(input, required){
 	        	return !(required && input.value.length > 0)
 	        }.bind(this),
 
-	        file: function(){
+	        file: function(input, required){
 	        	return !(required && input.value.length > 0)
 	        }.bind(this),
 
-	        select: function(){
+	        select: function(input, required){
 	        	return !(required && !!input.value);
 	        }
 		},
@@ -108,7 +108,7 @@
 		},
 
 		validate: function(type, input, required, data, key){
-			var isInvalid = (!!this.validators[type] && this.validators[type]())
+			var isInvalid = (!!this.validators[type] && this.validators[type](input, required))
 			this.invalidate(type, input, isInvalid);
 			
 			return isInvalid;
