@@ -627,12 +627,10 @@
       createField: function(structure, data, scope){
         var key = structure.key,
             self = this;
-        
+
         if (structure.type === "group"){
           var wrap = this.createWithAttributes("div", {"class": ["group", structure.key, structure.additionalClasses].join(" ")}),
               contents = this.buildStructure(structure.structure, data, wrap, scope);
-
-          return wrap;
         } else if (structure.type === "step") { 
           var wrap = this.createWithAttributes("div", {"class": ["step form-step", structure.key, structure.additionalClasses].join(" ")}),
               next_button = this.createWithAttributes("paper-button", { "class": "next-button", text: (structure.nextText || "Next"), raised: true }),
@@ -644,8 +642,6 @@
 
           wrap.appendChild(back_button);
           wrap.appendChild(next_button);
-          
-          return wrap;
         } else if (structure.type === "nest"){
           var wrap = self.createWithAttributes("div", {"class": "nest " + key}),
               nested_data = self.scopeNestData(structure, key, data),
@@ -665,9 +661,6 @@
           } else {
             self.buildStructure(structure.structure, nested_data, wrap, nested_scope);
           }
-
-          return wrap;
-
         } else {
           //TODO: set defaults here
           var options = structure.options || {},
@@ -676,8 +669,21 @@
               inputElement = self.createInput(structure, fieldData, key, scope);
 
           wrap.appendChild(inputElement);
-          return wrap;
         }
+
+        var strutureObserver = new ObjectObserver(structure)
+        strutureObserver.open(function(){ 
+          this.updateField(structure, data, scope, wrap);
+          strutureObserver.close(); //because updating the field will run this again we close this observer
+        }.bind(this))
+
+        return wrap;
+      },
+
+      updateField: function(structure, data, scope, wrap){
+        var field = this.createField(structure, data, scope);
+        wrap.parentNode.insertBefore(field, wrap.nextSibling);
+        wrap.parentNode.removeChild(wrap);
       },
 
       getField: function(key){
