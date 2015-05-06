@@ -1,0 +1,328 @@
+<core-style id='rails-form'>
+	#inputs-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        flex-direction: row;
+        position: relative;
+      }
+
+      .input, .nest, .list-group, .group, .step{
+        flex: 1;
+        min-width: 100%;
+        max-width: 0;
+        position: relative;
+        display: inline-block;
+        box-sizing: border-box;
+        margin-bottom: 0px;
+      }
+
+      .input {
+        padding: 0px 10px;
+      }
+
+      .input.json {
+        padding: 0px;
+      }
+
+      .input.json .json-wrapper > textarea {
+        display: none;
+      }
+
+      .nest {
+        display: flex;
+        flex-wrap: wrap;
+      }
+
+      .step:last-of-type {
+        margin-bottom: -60px; /* To suck the submit buttom up */
+      }
+
+      gc-input-decorator.invalid /deep/ .error {
+        display: none !important;
+      }
+
+      /* File upload CSS */
+      .btn-file-upload input[type=file] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        font-size: 999px;
+        text-align: right;
+        filter: alpha(opacity=0);
+        opacity: 0;
+        outline: none;
+        background: white;
+        cursor: pointer;
+        display: block;
+        z-index: 1;
+      }
+
+      .btn-file-upload {
+        position: relative;
+        overflow: hidden;
+        display: block;
+      
+      }
+
+      /* Image upload CSS */
+      .btn-image-upload input[type=file] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        font-size: 999px;
+        text-align: right;
+        filter: alpha(opacity=0);
+        opacity: 0;
+        outline: none;
+        background: white;
+        cursor: pointer;
+        display: block;
+        z-index: 1;
+      }
+
+      .btn-image-upload {
+        position: relative;
+        overflow: hidden;
+        display: block;
+        font-size: 1000%;
+        width: 1.5em;
+        height: 1em;
+        text-align: center;
+        margin: 0px auto;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+      }
+
+      .btn-image-upload core-icon {
+        height: 100%;
+        width: 100%;
+        margin: 0 auto;
+        display: block;
+        color: #666;
+        font-size: 10%;
+      }
+
+      .has-image .btn-image-upload core-icon {
+        display: none;
+      }
+
+      .has-image .btn-image-upload p {
+        display: none;
+      }
+
+      .btn-image-upload div {
+        height: 75%;
+        width: 100%;
+      }
+
+      .btn-image-upload p {
+        font-size: 10%;
+        margin-top: 0px;
+      }
+
+      /* Lists */
+
+      .list-group .list-item-display {
+        display: flex;
+        border-bottom: solid 1px;
+        margin-bottom: 5px;
+      }
+
+      .list-group .remove-button {
+        color: red;
+        cursor: pointer;
+        position: absolute;
+        top: 0px;
+        right: 5px;
+      }
+
+      .list-group .list-item-display > div {
+        cursor: pointer;
+        flex: 1;
+      }
+
+      .addable .add-button {
+        margin: 0;
+        box-sizing: border-box;
+      }
+
+      .addable .add-button /deep/ .button-content {
+        padding: 0;
+      }
+
+      .addable .add-button core-icon {
+        display: inline-block;
+        color: #5bc0de;
+      }
+
+      .addable .add-button div {
+        display: inline-block;  
+        color: #5bc0de;
+      }
+
+      .list-group .list-form .list-group .list-item {
+        min-width: 100%;
+      }
+
+      .addable .list-form, .addable .list-item {
+        min-width: 100%;
+      }
+
+      .list-group .list-form {
+        
+      }
+
+      .list-group .list-item {
+        padding: 10px;
+        box-sizing: border-box;
+      }
+
+
+    /* Checkboxes */
+      paper-checkbox input[type=checkbox] {
+        display: none;
+      }
+
+    /* Selects */
+      .select-wrapper {
+        position: relative;
+      }
+
+      .select-wrapper .pseudo-select {
+        opacity: 0;
+        display: none;
+        transition: opacity 250ms ease-out;
+        position: absolute;
+        top: 100%;
+        width: 106%;
+        background-color: white;
+        box-shadow: -2px 1px 10px #888;
+        margin-top: -11px;
+        z-index: 1;
+        margin-left: -3%;
+      }
+
+      .select-wrapper.opened .pseudo-select {
+        opacity: 1;
+        display: block;
+      }
+
+      .select-wrapper input.pseudo-select-input {
+        padding-right: 20px;
+        box-sizing: border-box;
+      }
+
+      .select-wrapper .select-icon {
+        position: absolute;
+        right: -6px;
+        width: 35px;
+        bottom: -6px;
+        height: 35px;
+      }
+
+      /* Firefox fix */
+      .select-wrapper .select-icon svg {
+        width: 35px;
+        right: 0;
+        left: auto;
+      }
+
+      .select-wrapper .pseudo-select > div {
+        min-height: 2em;
+        border-bottom: solid 1px;
+        padding: 5px 3%;
+        position: relative;
+      } 
+
+      .select-wrapper .pseudo-select > div:hover {
+        background-color: #D5DAFF;
+      }
+
+      .select-wrapper .pseudo-select > div paper-checkbox {
+        float: left;
+        margin-right: 15px;
+      }
+
+      .input.id {
+        display: none;
+      }
+
+      /* Autocomplete */
+
+      .autocomplete-selector {
+        position: absolute;
+        background-color: white;
+        box-shadow: -2px 1px 10px #888;
+        z-index: 1;
+        padding: 5px;
+        border: solid 1px #888;
+        box-sizing: border-box;
+        margin-top: -11px;
+      }
+
+      .autocomplete-selector .autocomplete-list-item {
+        border-bottom: solid 1px #ccc;
+        margin-top: 5px;
+        padding: 0px 10px 0px 0px;
+      }
+
+      .autocomplete-selector .autocomplete-list-item:last-of-type {
+        border-bottom: 0px;
+      }
+
+      .autocomplete-selector .autocomplete-list-item.core-selected {
+        background-color: #D5DAFF;
+      }
+
+      .autocomplete-selector .autocomplete-list-item:hover {
+        background-color: #D5DAFF;
+      }
+
+      /* Submit Button */
+
+      #submit-button, .step .next-button, .step .back-button {
+        margin-top: 15px;
+        margin-bottom: 5px;
+        padding-left: 30px;
+        padding-right: 30px;
+        background-color: #5bc0de;
+        border-color: #46b8da;
+        color: white;
+        clear: both;
+      }
+
+      .stepped .step .back-button {
+        display: none;
+      }
+
+      .stepped .step ~ .step .back-button {
+        display: inline-block;
+        margin-right: 15px;
+      }
+
+      .stepped #submit-button, .stepped .next-button {
+        float: right;
+        clear: inherit;
+      }
+
+      .stepped .back-button {
+        float: left;
+      }
+
+      #submit-button.in-transit span{
+        display: none;
+      }
+
+      #submit-button.in-transit form-spinner {
+        display: block;
+      }
+
+      #submit-button form-spinner {
+        display: none;
+      }
+</core-style>

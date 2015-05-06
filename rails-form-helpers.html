@@ -369,6 +369,30 @@
     },
 
     inputs: {
+      plain: function(structure, data, key, scope){
+        var input,
+            options = {
+              name: this.updateFieldScope(structure, key, scope)
+            }
+
+        if (structure.input_type === 'select'){
+          input = this.createWithAttributes('select', options);
+        } else if (structure.input_type === 'textarea') {
+          input = this.createWithAttributes('textarea', options);
+        } else {
+          options.type = structure.input_type
+          input = this.createWithAttributes('input', options);
+        }
+
+        input.bind('value', new PathObserver(data, key));
+
+        if (!!structure.autocomplete && typeof structure.autocomplete === "string"){
+          this.autocomplete(input, structure.autocomplete, structure.autocompleteOptions || {});
+        } 
+
+        return input;
+      },
+
       string: function(structure, data, key, scope){
         return this.createBasicInput("text", structure, data, key, scope);
       },
@@ -407,6 +431,12 @@
             input = this.createWithAttributes('input', {type: "checkbox"}),
             actual = this.createWithAttributes('input', {type: "hidden", name: this.updateFieldScope(structure, key, scope)});
 
+        if (data[key] == 1){
+          input.checked = "checked";
+          actual.checked = "checked";
+          box.checked = true;
+        }
+
         box.label = this.capitalize(structure.label || key);
         box.appendChild(input);
         wrap.appendChild(box);
@@ -419,6 +449,26 @@
         }.bind(this), false)
 
         return wrap;
+
+      },
+
+      radio: function(structure, data, key, scope){
+        var wrapper = this.createWithAttributes('div', {"class": "radio-wrapper"}),
+            input = this.createWithAttributes('input', {type: 'hidden', name: this.updateFieldScope(structure, key, scope) }),
+            group = this.createWithAttributes('paper-radio-group', {selected: data[key]});
+
+        for (var i=0; i<structure.values.length; i++){
+          var item = this.createWithAttributes('paper-radio-button', { name: structure.values[i][0], label: structure.values[i][1] });
+          group.appendChild(item);
+        }
+
+        wrapper.appendChild(group);
+        wrapper.appendChild(input);
+
+        input.bind('value', new PathObserver(data, key)); 
+        group.bind('selected', new PathObserver(data, key));
+
+        return wrapper;
 
       },
 
@@ -451,19 +501,19 @@
             input = this.createWithAttributes("input", { type: "text", name: "", "class": "pseudo-select-input", disabled: true }),
             select = this.createWithAttributes("core-selector", {valueattr: "val", "class": "pseudo-select", multi: (!!structure.multi) });
         
-        //secretInput.bind('value', new PathObserver(data, key));
-        //select.bind('selected', new PathObserver(data, key));
-        new PathObserver(data, key).open(function(){
-          secretInput.value = !!structure.multi ? JSON.stringify(data[key]) : data[key];
-          select.selected = data[key];
-        })
+        secretInput.bind('value', new PathObserver(data, key));
+        select.bind('selected', new PathObserver(data, key));
+        // new PathObserver(data, key).open(function(){
+        //   secretInput.value = !!structure.multi ? JSON.stringify(data[key]) : data[key];
+        //   select.selected = data[key];
+        // })
 
-        if (!structure.blank){ 
+        if (!structure.blank && !structure.multi && data[key] === null){ 
           data[key] = values.length > 0 ? values[0][0] : (!!structure.multi ? [] : "");
           input.value = values.length > 0 ? values[0][1] : "";
         }
-        var self = this;
 
+        var self = this;
         if (!structure.opened){
         
           select.addEventListener("click", function(e){
@@ -544,7 +594,7 @@
             var div = self.createWithAttributes("div", {val: structure.values[i][0], text: structure.values[i][1] });
             
             if (!!structure.multi){
-              var checkbox = this.createWithAttributes("paper-checkbox", {"class": "select-check"});
+              var checkbox = this.createWithAttributes("paper-checkbox", {"class": "select-check", checked: data[key] === null ? false : data[key].indexOf(structure.values[i][0]) !== -1 });
               div.appendChild(checkbox);
             }
             select.appendChild(div);
@@ -703,7 +753,6 @@
     },
 
     createBasicInput: function(type, structure, data, key, scope){
-      console.log(arguments)
       var wrapper = document.createElement("gc-input-decorator"),
           input = document.createElement( type === "textarea" ? "textarea" : "input" );
       
