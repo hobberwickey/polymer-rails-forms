@@ -152,7 +152,6 @@
         
         if (this.action !== null){
           if (this.xhr){
-            console.log(4)
             this.inTransit = true;
         
             if (!!this.scope && this.scope.length > 0){
@@ -169,7 +168,6 @@
               callback: callback,
               headers: { "x-requested-with": "XMLHttpRequest" }
             })
-          
           } else {
             this.inTransit = true;
             form.submit();
