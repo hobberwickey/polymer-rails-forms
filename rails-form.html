@@ -468,14 +468,12 @@
           this.inTransit = false;
           this.handleXhrCallback(resp);
         }.bind(this)
-        console.log(1)
+        
         if (this.inTransit) return;
-        console.log(2)
         if (this.isFormInvalid()) return; 
-        console.log(3)
+        
         if (this.action !== null){
           if (this.xhr){
-            console.log(4)
             this.inTransit = true;
         
             if (!!this.scope && this.scope.length > 0){
@@ -492,7 +490,6 @@
               callback: callback
               //headers: { "Content-type": "application/json", "Accept": "application/json" }
             })
-            console.log(5)
           } else {
             this.inTransit = true;
             form.submit();
